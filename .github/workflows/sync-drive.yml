@@ -50,7 +50,14 @@ jobs:
             git config user.email "kpc-bot@users.noreply.github.com"
             git add data/mappings/explanation-files.json
             git commit -m "chore: auto-sync drive mappings"
-            git push
+            # remote가 앞서 있을 수 있어 pull --rebase 후 push 재시도
+            for i in 1 2 3; do
+              if git push; then
+                break
+              fi
+              echo "push 실패, pull --rebase 후 재시도 ($i/3)"
+              git pull --rebase origin main
+            done
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
