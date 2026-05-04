@@ -25,8 +25,9 @@ export default function ProblemCard({ result }: Props) {
   const numLabel = p.questionLabel ? `${p.questionLabel}번` : '';
 
   const hasExplanation = Boolean(p.explanationFileId);
+  // /preview URL은 Drive 인터페이스(다운로드/인쇄/공유 버튼) 없이 PDF만 노출
   const externalUrl = hasExplanation
-    ? `https://drive.google.com/file/d/${p.explanationFileId}/view`
+    ? `https://drive.google.com/file/d/${p.explanationFileId}/preview`
     : null;
 
   const handleOpenExplanation = (e: React.MouseEvent) => {

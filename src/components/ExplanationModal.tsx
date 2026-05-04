@@ -48,8 +48,9 @@ export default function ExplanationModal({ open, onClose, problem }: Props) {
   if (!open || !problem.explanationFileId) return null;
 
   const fileId = problem.explanationFileId;
+  // /preview는 임베드 뷰 — Drive UI(다운로드/인쇄 버튼) 없이 PDF만 노출
   const previewUrl = `https://drive.google.com/file/d/${fileId}/preview`;
-  const externalUrl = `https://drive.google.com/file/d/${fileId}/view`;
+  const externalUrl = previewUrl;
 
   const sessionLabel =
     problem.sessionType === '교시'
