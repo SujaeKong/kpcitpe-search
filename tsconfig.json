@@ -1,0 +1,18 @@
+{
+  "extends": "astro/tsconfigs/strict",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "react",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
+    "types": ["node"],
+    "allowImportingTsExtensions": false,
+    "resolveJsonModule": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler"
+  },
+  "include": ["src", "scripts", "astro.config.mjs", "tailwind.config.mjs"],
+  "exclude": ["node_modules", "dist", ".astro"]
+}

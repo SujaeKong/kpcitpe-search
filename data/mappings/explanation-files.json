@@ -1,0 +1,140 @@
+{
+  "$comment": "해설지 PDF의 Google Drive 파일 ID 매핑. requirements.md §5.4 참고. 키 규칙은 data/mappings/README.md.",
+  "기출": {},
+  "합숙": {
+    "2026.02": {
+      "1일차_1교시": { "id": "1RAstKItBKBU6Rh-egPgiTHiQuUygQSC1", "name": "KPC 138회 대비 합숙해설집_1일차_1교시_통합.pdf" },
+      "1일차_2교시": { "id": "1lKgpcBxyJ05-wkP6E178q0Ba4nOxxJJi", "name": "KPC 138회 대비 합숙해설집_1일차_2교시_통합.pdf" },
+      "2일차_1교시": { "id": "1NNGXbzXEgXuZjQKEexBXlsPVP727u_zA", "name": "KPC 138회 대비 합숙해설집_2일차_1교시_통합.pdf" },
+      "2일차_2교시": { "id": "1MQHABzZ9yrybtO-KbLnvy3ieLQL1oY0E", "name": "KPC 138회 대비 합숙해설집_2일차_2교시_통합.pdf" }
+    },
+    "2025.08": {
+      "1일차_1교시": { "id": "1K5umT9nU_pJxAhaV1xWpdyxDyNr5dfTO", "name": "KPC 137회 대비 합숙해설집_1일차_1교시_통합.pdf" },
+      "1일차_2교시": { "id": "12HOq07rrxnYKj_zclX1YAWykT8lOOFx7", "name": "KPC 137회 대비 합숙해설집_1일차_2교시_통합.pdf" },
+      "2일차_1교시": { "id": "1hk6CiiCbMo0nKuipFVTy5exDpgKLnAxr", "name": "KPC 137회 대비 합숙해설집_2일차_1교시_통합.pdf" },
+      "2일차_2교시": { "id": "12bXL-JHzrQxS10_XHRWp2F_1rtR7qevi", "name": "KPC 137회 대비 합숙해설집_2일차_2교시_통합.pdf" },
+      "3일차_1교시": { "id": "1L4ajmrtv21Jl0C3olVs_K_WauL6SyJZ1", "name": "KPC 137회 대비 합숙해설집_3일차_1교시_통합.pdf" },
+      "3일차_2교시": { "id": "17Ue2G3jUSNrC5YJQ3TI-WOcI7f2LeCja", "name": "KPC 137회 대비 합숙해설집_3일차_2교시_통합.pdf" }
+    },
+    "2024.01": {
+      "1일차_1교시": { "id": "1wJUyyrCC2uamnZ0G5rOHkuCABUGxhoSz", "name": "KPC 132회 대비 합숙해설집_1일차_1교시_취합.pdf" },
+      "1일차_2교시": { "id": "15Dfld7cW534B2_5mnh-EMljsAU5Ou1x8", "name": "KPC 132회 대비 합숙해설집_1일차_2교시_취합.pdf" },
+      "2일차_1교시": { "id": "1ViI9l6OBwODlUGEZ4lJ-PbeFXcmOEuq_", "name": "KPC 132회 대비 합숙해설집_2일차_1교시.pdf" },
+      "2일차_2교시": { "id": "1AR6NOmLzY0DNVjWLAfgj0oWYwQm-Gdo5", "name": "KPC 132회 대비 합숙해설집_2일차_2교시.pdf" }
+    },
+    "2023.08": {
+      "1일차_1교시": { "id": "1hwhVYpGfwSaIdhArHxU0jYm3O6XBSicu", "name": "KPC 131회 대비 합숙해설집_1일차_1교시_취합본v01.pdf" },
+      "1일차_2교시": { "id": "1GCvpS1Eo1GKhguCQSFdpMWZPOlZRhD-d", "name": "KPC 131회 대비 합숙해설집_1일차_2교시_취합본v02.pdf" },
+      "2일차_1교시": { "id": "1M8IISwC8eq_Jq2B0k7TVNibHpAMt9Ups", "name": "KPC 131회 대비 합숙해설집_2일차_1교시_취합본v01.pdf" },
+      "2일차_2교시": { "id": "1V0_BpjMDeVqfufQig0j4q-x9q2xrVAYJ", "name": "KPC 131회 대비 합숙해설집_2일차_2교시_취합본v01.pdf" }
+    },
+    "2022.06": {
+      "1일차_1교시": { "id": "1yz-A52hqHX6SSNu3dG6G4dwjdMH8c7rZ", "name": "KPC 128회 대비 합숙해설집_1일차_1교시.pdf" },
+      "1일차_2교시": { "id": "1o_C61zfXM-bgogApZ4xJqGl_zpn_Ai5h", "name": "KPC 128회 대비 합숙해설집_1일차_2교시.pdf" },
+      "2일차_1교시": { "id": "1V2O6uc8PrOLY5EM_ZT_sX5RY3ZGtUx7C", "name": "KPC 128회 대비 합숙해설집_2일차_1교시.pdf" },
+      "2일차_2교시": { "id": "11wCkW40AiOW-doXSqU6xX1fmrjXgo6hP", "name": "KPC 128회 대비 합숙해설집_2일차_2교시.pdf" },
+      "3일차_1교시": { "id": "1u6uw1nDwAJJ0EZEQysBmm3HpGw0t4YPL", "name": "KPC 128회 대비 합숙해설집_3일차_1교시.pdf" },
+      "3일차_2교시": { "id": "1bWLzCSP28MjIL0JEXnUzcY615JeS1wwD", "name": "KPC 128회 대비 합숙해설집_3일차_2교시.pdf" }
+    },
+    "2021.07": {
+      "1일차_1교시": { "id": "1KmTCmEhhbHJKX0-YOtWkGYZ92l95nO1c", "name": "KPC 125회 대비 합숙해설집_1일차_1교시.pdf" },
+      "1일차_2교시": { "id": "1IQWDBcJVatCCymkI-ErTvbTKsOyomE0v", "name": "KPC 125회 대비 합숙해설집_1일차_2교시.pdf" },
+      "2일차_1교시": { "id": "1bJZe-LWTNqeo-Z9iuOzmE0-64ZKRTjP_", "name": "KPC 125회 대비 합숙해설집_2일차_1교시.pdf" },
+      "2일차_2교시": { "id": "10K3Z-n8L9EGo23hahsgBVhReesacqkOc", "name": "KPC 125회 대비 합숙해설집_2일차_2교시.pdf" },
+      "3일차_1교시": { "id": "1RfTZZJi8A9-0QyuhKDXdVQLijPiHFKiZ", "name": "KPC 125회 대비 합숙해설집_3일차_1교시.pdf" },
+      "3일차_2교시": { "id": "1t3-Nry9fp13c1iMgYc5xCTy69vlgfoyM", "name": "KPC 125회 대비 합숙해설집_3일차_2교시.pdf" }
+    },
+    "2021.05": {
+      "1일차_1교시": { "id": "1_c1wTwTHeQF6gkDdcdIeZMC3iGAhlPys", "name": "KPC 124회 대비 합숙해설집_1일차_1교시_통합본.pdf" },
+      "1일차_2교시": { "id": "1ENlKNZJTJkC5t919Dmei2dJLR1wDtf4F", "name": "KPC 124회 대비 합숙해설집_1일차_2교시_통합본.pdf" },
+      "2일차_1교시": { "id": "1Sflg2K67z5EuWWU-Ggm322M3pgUFIZMi", "name": "KPC 124회 대비 합숙해설집_2일차_1교시_통합본.pdf" },
+      "2일차_2교시": { "id": "1oD8lE7jS1X9zMzqwx7LINiiixbw4s-SQ", "name": "KPC 124회 대비 합숙해설집_2일차_2교시_통합본.pdf" },
+      "3일차_1교시": { "id": "1ioMhr4rIDcjOXCVwG39CODXWcn09M1Wh", "name": "KPC 124회 대비 합숙해설집_3일차_1교시_통합본.pdf" },
+      "3일차_2교시": { "id": "1Axz89sCAowgwjXJxWf4zn_SGzgx6o_D0", "name": "KPC 124회 대비 합숙해설집_3일차_2교시_통합본.pdf" }
+    },
+    "2021.01": {
+      "1일차_1교시": { "id": "17AjyC6_P5hG30Mr7Hru62JG6Th8GJJ1K", "name": "KPC 123회 대비 합숙해설집_1일차_1교시.pdf" },
+      "1일차_2교시": { "id": "1I5AHu57hrZ0xGl003h4V2k9qJZ6Lf63v", "name": "KPC 123회 대비 합숙해설집_1일차_2교시.pdf" },
+      "2일차_1교시": { "id": "1a3K9GXMXKcAv-riEtJev1aIK_fgvM5h4", "name": "KPC 123회 대비 합숙해설집_2일차_1교시.pdf" },
+      "2일차_2교시": { "id": "1FK11K7FcVU-X7NuIG6elCJ631HJrRluL", "name": "KPC 123회 대비 합숙해설집_2일차_2교시.pdf" },
+      "3일차_1교시": { "id": "1_bR9bsbisv0gXzuoKa1LEW7BfXdM5Mlo", "name": "KPC 123회 대비 합숙해설집_3일차_1교시.pdf" },
+      "3일차_2교시": { "id": "1JjiygRira5xIly7c94gRPI_rrqzz1yfq", "name": "KPC 123회 대비 합숙해설집_3일차_2교시.pdf" }
+    },
+    "2020.07": {
+      "1일차_1교시": { "id": "1otQU3wmyyqPb5w40aQg2n2lICneWxnQF", "name": "KPC 122회 대비 합숙해설집_1일차_1교시_통합.pdf" },
+      "1일차_2교시": { "id": "1csxn8dgI4iVQZsAHX58ZY6F6ICdT1QQp", "name": "KPC 122회 대비 합숙해설집_1일차_2교시_통합.pdf" },
+      "2일차_1교시": { "id": "1exnVYjB3LVCArgHDGmVtciekdb_Jd2D4", "name": "KPC 122회 대비 합숙해설집_2일차_1교시_통합.pdf" },
+      "2일차_2교시": { "id": "1VR-S0w10aajohq-ebA5DttpO5FZjgI16", "name": "KPC 122회 대비 합숙해설집_2일차_2교시_통합.pdf" },
+      "3일차_1교시": { "id": "1Mrkn4JJ7-NfBkOiMoD6aFQ88lOFX9tGo", "name": "KPC 122회 대비 합숙해설집_3일차_1교시_통합.pdf" },
+      "3일차_2교시": { "id": "1Sc68KHiPc4mUNIMymOaslRD0UX-1_1DD", "name": "KPC 122회 대비 합숙해설집_3일차_2교시_통합.pdf" },
+      "4일차_1교시": { "id": "1O9taHvKTjfCxUz6La1LEEFOWLVewtZ4s", "name": "KPC 122회 대비 합숙해설집_4일차_1교시_통합.pdf" },
+      "4일차_2교시": { "id": "1uQIj-IA3JKkX7CiGLqVldW90GZu5e9QS", "name": "KPC 122회 대비 합숙해설집_4일차_2교시_통합.pdf" },
+      "5일차_1교시": { "id": "1DMaARVlYXQCObYO7W6glQtpbb2ABxwzg", "name": "KPC 122회 대비 합숙해설집_5일차_1교시_통합.pdf" },
+      "5일차_2교시": { "id": "1zrCwaYA1dqPzjMx2AJHY0psSJdERgSUN", "name": "KPC 122회 대비 합숙해설집_5일차_2교시_통합.pdf" }
+    },
+    "2020.05": {
+      "1일차_1교시": { "id": "1AAI96CLpyN5ENP7Rw3ITe3aT-XCOJY1U", "name": "KPC 121회 대비 합숙해설집_1일차_1교시.pdf" },
+      "1일차_2교시": { "id": "1WjdT-cwvhQBxFj7VpUP_CsXpjZneOvRq", "name": "KPC 121회 대비 합숙해설집_1일차_2교시.pdf" },
+      "2일차_1교시": { "id": "1Qo861P98dytHndsiv4MpB-Po7ERkyi2T", "name": "KPC 121회 대비 합숙해설집_2일차_1교시.pdf" },
+      "2일차_2교시": { "id": "1lyvyPwA38WvmTQS9GO2Ft434ZDw6lDQa", "name": "KPC 121회 대비 합숙해설집_2일차_2교시.pdf" },
+      "3일차_1교시": { "id": "1ITZVDKEy0oZ82aTuy-8MxkIVrA2yG3gH", "name": "KPC 121회 대비 합숙해설집_3일차_1교시.pdf" },
+      "3일차_2교시": { "id": "1B2JSkYX7wQuyGJYGlPvbR-QMJVLpDtFh", "name": "KPC 121회 대비 합숙해설집_3일차_2교시.pdf" }
+    },
+    "2018.08": {
+      "1일차_1교시": { "id": "1OIsPdeR461rGWWMbFKRcHl_1b3rv6Our", "name": "KPC 116회 대비 합숙해설집_1일차_1교시.pdf" },
+      "1일차_2교시": { "id": "19y_gJftFW_zPPPT3-KaSctME4Q3CYvws", "name": "KPC 116회 대비 합숙해설집_1일차_2교시.pdf" },
+      "2일차_1교시": { "id": "176K5kFbWeTt6II5g6z4S_mQ4Y49m1E_j", "name": "KPC 116회 대비 합숙해설집_2일차_1교시.pdf" },
+      "2일차_2교시": { "id": "1IO9DZHMtQAzmV_sQTieoOf2mgYE3_W-V", "name": "KPC 116회 대비 합숙해설집_2일차_2교시.pdf" },
+      "3일차_1교시": { "id": "1f4rTIF3--mWdUDfg4eefb8cp25yAa35s", "name": "KPC 116회 대비 합숙해설집_3일차_1교시.pdf" },
+      "3일차_2교시": { "id": "1LlI4lmHiCtJZWNz1ew68wmYFr7X6uNCB", "name": "KPC 116회 대비 합숙해설집_3일차_2교시.pdf" },
+      "4일차_1교시": { "id": "1SOoim1qHsMVZTbPnUD_ORE33Iyv1S2bw", "name": "KPC 116회 대비 합숙해설집_4일차_1교시.pdf" },
+      "4일차_2교시": { "id": "156UQXaUtaEPPss3g2T_dvXZxX5RjBCok", "name": "KPC 116회 대비 합숙해설집_4일차_2교시.pdf" },
+      "5일차_1교시": { "id": "1Wbmp8yIDQbEtiYRmXQo6S1d5A_D1hqL7", "name": "KPC 116회 대비 합숙해설집_5일차_1교시.pdf" },
+      "5일차_2교시": { "id": "1WjTg-H72zJTSMR_fIUi6yFnacylpvqSl", "name": "KPC 116회 대비 합숙해설집_5일차_2교시.pdf" }
+    },
+    "2018.01": {
+      "1일차_1교시": { "id": "1qqD4rNvAV1j8qRKlD7JDxpNmxjBAgXHf", "name": "KPC 114회 대비 합숙해설집_1일차_1교시.pdf" },
+      "1일차_2교시": { "id": "1H-oj5AW9uOswJBxwJJqAu-ZH4M0Ws_n8", "name": "KPC 114회 대비 합숙해설집_1일차_2교시.pdf" },
+      "2일차_1교시": { "id": "18ZP1CMUK9P9uaZ6QHHLosO1FiJUyTMkB", "name": "KPC 114회 대비 합숙해설집_2일차_1교시.pdf" },
+      "2일차_2교시": { "id": "15BRH2-bAAmYFaXsWzLT8k5PUeM6iIav4", "name": "KPC 114회 대비 합숙해설집_2일차_2교시.pdf" },
+      "3일차_1교시": { "id": "1Z_t68ajkVu4azWMqikmXZ8O00ZQcE94F", "name": "KPC 114회 대비 합숙해설집_3일차_1교시.pdf" },
+      "3일차_2교시": { "id": "1FkUEZEcRvo144nt93cOmjSNBpt5k2bj-", "name": "KPC 114회 대비 합숙해설집_3일차_2교시.pdf" },
+      "4일차_1교시": { "id": "1eXJ5yv7nfEYdioY_vj4A53UmirTTnSWW", "name": "KPC 114회 대비 합숙해설집_4일차_1교시.pdf" },
+      "4일차_2교시": { "id": "1KzlWQFtCbtWv05HLVKiMhgo5baQpg4yw", "name": "KPC 114회 대비 합숙해설집_4일차_2교시.pdf" },
+      "5일차_1교시": { "id": "1nqMVpgaMzMFx6vDMHo4DoWAs_3FciBJ9", "name": "KPC 114회 대비 합숙해설집_5일차_1교시.pdf" },
+      "5일차_2교시": { "id": "15DxV-0aTsHXqp9EqpjmMTsoiv0OD4eI3", "name": "KPC 114회 대비 합숙해설집_5일차_2교시.pdf" }
+    },
+    "2017.08": {
+      "1일차_1교시": { "id": "1uVuwh5q91F41vhxEhIwzWvESNrklGArU", "name": "KPC 113회 대비 합숙해설집_1일차_1교시.pdf" },
+      "1일차_2교시": { "id": "1GqakU2mdUpG3jxYWUSGuPNLTOG2xaJqP", "name": "KPC 113회 대비 합숙해설집_1일차_2교시.pdf" },
+      "2일차_1교시": { "id": "15QdeNY8SXqJxtxL2DqcpK9oSJCMKmloK", "name": "KPC 113회 대비 합숙해설집_2일차_1교시.pdf" },
+      "2일차_2교시": { "id": "1JLqlpolinGuSYILmA7bl5AWPpl9SNGen", "name": "KPC 113회 대비 합숙해설집_2일차_2교시.pdf" },
+      "3일차_1교시": { "id": "16JOkfxLWXLm5gchoup90iIBM5w8gl9yk", "name": "KPC 113회 대비 합숙해설집_3일차_1교시.pdf" },
+      "3일차_2교시": { "id": "1eJVGddhvvYEww_BHG_sT-R762Kd2wzbN", "name": "KPC 113회 대비 합숙해설집_3일차_2교시.pdf" },
+      "4일차_1교시": { "id": "1_BPcFQZO4VoOZYJEaUOi7T45oyNnsA8Z", "name": "KPC 113회 대비 합숙해설집_4일차_1교시.pdf" },
+      "4일차_2교시": { "id": "1YMzWp60daAQWPBJa6g1Bi6ejdrN_yHdY", "name": "KPC 113회 대비 합숙해설집_4일차_2교시.pdf" },
+      "5일차_1교시": { "id": "1TD5XLjvZN9GoCONRm3sghmIreyPzTstB", "name": "KPC 113회 대비 합숙해설집_5일차_1교시.pdf" },
+      "5일차_2교시": { "id": "1qk5BBsyGPp2WZIKN8Jn49EreDuKnkoxq", "name": "KPC 113회 대비 합숙해설집_5일차_2교시.pdf" }
+    },
+    "2016.07": {
+      "1일차_1교시": { "id": "1DF48rTl-0YBSwrrkSEw403KMgCbqZ3oM", "name": "KPC 110회 대비 합숙해설집 1일차 1교시_final.pdf" },
+      "1일차_2교시": { "id": "1e68Ohzmz84AMFx-kK1Z6xsBSyOXlhjRV", "name": "KPC 110회 대비 합숙해설집 1일차 2교시_final.pdf" },
+      "2일차_1교시": { "id": "1a7ozelWFDQ0_pJYTcbhk3uMj43rNmSwZ", "name": "KPC 110회 대비 합숙해설집 2일차 1교시_final.pdf" },
+      "2일차_2교시": { "id": "1b_M5VhKE3XYfgUgcZcSZnMAa_cqpl9jM", "name": "KPC 110회 대비 합숙해설집 2일차 2교시_final.pdf" },
+      "3일차_1교시": { "id": "1bVuF80vvTioIcyZyeUcnjle5SeOxp69W", "name": "KPC 110회 대비 합숙해설집 3일차 1교시_final.pdf" },
+      "3일차_2교시": { "id": "1EaMO-VOPMe9In84AFAFR2lX_k1YbSVma", "name": "KPC 110회 대비 합숙해설집 3일차 2교시_final.pdf" },
+      "4일차_1교시": { "id": "1J0NWB_eIbBC0_8wcNOO700akid_pMlSt", "name": "KPC 110회 대비 합숙해설집 4일차 1교시_final.pdf" },
+      "4일차_2교시": { "id": "1yDqZTPHr-rvsUF6rgn6s7JOf2pnSeO7f", "name": "KPC 110회 대비 합숙해설집 4일차 2교시_final.pdf" },
+      "5일차_1교시": { "id": "1lVI8pkDe870nqnC4Vu1k8PtvYTrFgAtT", "name": "KPC 110회 대비 합숙해설집 5일차 1교시_final.pdf" },
+      "5일차_2교시": { "id": "1xwWWnPJ8busId1Y6o9xo_F4gEjpUK1bj", "name": "KPC 110회 대비 합숙해설집 5일차 2교시_final.pdf" }
+    }
+  },
+  "모의": {
+    "KPC": {},
+    "ITPE": {}
+  },
+  "자체": {
+    "KPC": {},
+    "ITPE": {}
+  }
+}

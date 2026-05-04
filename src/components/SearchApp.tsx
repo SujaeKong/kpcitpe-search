@@ -1,0 +1,226 @@
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { loadProblems } from '../lib/data-loader';
+import {
+  emptyFilterState,
+  SearchIndex,
+  type FilterState,
+  type SearchResult,
+} from '../lib/search';
+import type { CertScope, Problem, SourceType } from '../lib/types';
+import SearchBar from './SearchBar';
+import FilterPanel from './FilterPanel';
+import ProblemCard from './ProblemCard';
+
+const RESULT_LIMIT = 200;
+const PAGE_SIZE = 30;
+
+export default function SearchApp() {
+  const [problems, setProblems] = useState<Problem[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // URL → 초기 상태 (한 번만)
+  const initialUrl = useMemo(() => parseUrlState(), []);
+  const [query, setQuery] = useState<string>(initialUrl.query);
+  const [filters, setFilters] = useState<FilterState>(initialUrl.filters);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE);
+
+  // 데이터 로드
+  useEffect(() => {
+    let cancel = false;
+    loadProblems()
+      .then((p) => {
+        if (!cancel) setProblems(p);
+      })
+      .catch((err) => {
+        if (!cancel) setLoadError(err.message ?? String(err));
+      });
+    return () => {
+      cancel = true;
+    };
+  }, []);
+
+  // SearchIndex 인스턴스 (problems 로드 시 1회 생성)
+  const index = useMemo(
+    () => (problems ? new SearchIndex(problems) : null),
+    [problems],
+  );
+
+  // 옵션 추출 (필터 패널용)
+  const options = useMemo(() => extractOptions(problems ?? []), [problems]);
+
+  // 검색 실행
+  const results: SearchResult[] = useMemo(() => {
+    if (!index) return [];
+    return index.search({ query, filters, limit: RESULT_LIMIT });
+  }, [index, query, filters]);
+
+  // URL 동기화 (state → URL)
+  const skipUrlWrite = useRef(true);
+  useEffect(() => {
+    if (skipUrlWrite.current) {
+      skipUrlWrite.current = false;
+      return;
+    }
+    writeUrlState(query, filters);
+  }, [query, filters]);
+
+  // 페이지 사이즈 리셋 (검색/필터 변경 시)
+  useEffect(() => {
+    setPageSize(PAGE_SIZE);
+  }, [query, filters]);
+
+  const visible = results.slice(0, pageSize);
+  const hasMore = pageSize < results.length;
+
+  return (
+    <div className="space-y-4">
+      <SearchBar initial={initialUrl.query} onChange={setQuery} />
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[16rem_1fr]">
+        <FilterPanel filters={filters} onChange={setFilters} options={options} />
+
+        <section>
+          <ResultsHeader
+            loading={!problems && !loadError}
+            error={loadError}
+            total={problems?.length ?? 0}
+            shown={results.length}
+            query={query}
+          />
+          <ul className="mt-3 space-y-3">
+            {visible.map((r) => (
+              <li key={r.problem.id}>
+                <ProblemCard result={r} />
+              </li>
+            ))}
+          </ul>
+          {hasMore && (
+            <div className="mt-4 text-center">
+              <button
+                type="button"
+                onClick={() => setPageSize((s) => s + PAGE_SIZE)}
+                className="rounded border border-gray-300 bg-white px-4 py-2 text-sm hover:bg-gray-50"
+              >
+                더 보기 ({results.length - pageSize}건 남음)
+              </button>
+            </div>
+          )}
+          {results.length === RESULT_LIMIT && (
+            <p className="mt-3 text-xs text-gray-500">
+              결과가 {RESULT_LIMIT}건을 초과해 일부만 표시됩니다. 검색어를 더 구체화해 주세요.
+            </p>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}
+
+function ResultsHeader({
+  loading,
+  error,
+  total,
+  shown,
+  query,
+}: {
+  loading: boolean;
+  error: string | null;
+  total: number;
+  shown: number;
+  query: string;
+}) {
+  if (loading) return <p className="text-sm text-gray-500">데이터 로딩 중…</p>;
+  if (error) return <p className="text-sm text-red-600">로딩 실패: {error}</p>;
+  if (query.trim()) {
+    return (
+      <p className="text-sm text-gray-600">
+        <strong className="text-gray-900">{shown.toLocaleString()}</strong>건 검색됨 / 전체 {total.toLocaleString()}건
+      </p>
+    );
+  }
+  return (
+    <p className="text-sm text-gray-600">
+      전체 <strong className="text-gray-900">{total.toLocaleString()}</strong>건 (필터 적용 후 {shown.toLocaleString()}건)
+    </p>
+  );
+}
+
+// ===== 옵션 추출 =====
+
+function extractOptions(problems: Problem[]) {
+  const certScopes = new Set<CertScope>();
+  const sourceTypes = new Set<SourceType>();
+  const academies = new Set<string>();
+  const gyosiSet = new Set<string>();   // 통합 교시: 기출/모의의 session + 합숙의 sessionPart 숫자부분
+  const ilchaSet = new Set<string>();   // 합숙 일차
+
+  for (const p of problems) {
+    certScopes.add(p.certScope);
+    sourceTypes.add(p.sourceType);
+    academies.add(p.academy ?? '(없음)');
+    if (p.sessionType === '교시') {
+      gyosiSet.add(p.session);
+    } else {
+      ilchaSet.add(p.session);
+      if (p.sessionPart) {
+        // '1교시' → '1' 로 숫자만 추출하여 통합 교시 칩에 합류
+        gyosiSet.add(p.sessionPart.replace('교시', ''));
+      }
+    }
+  }
+
+  const certOrder: CertScope[] = ['정보관리', '컴시응', '공통'];
+  const sourceOrder: SourceType[] = ['기출', '합숙', '모의', '자체'];
+  const numericPrefix = (s: string) => {
+    const m = s.match(/^(\d+)/);
+    return m ? parseInt(m[1], 10) : 999;
+  };
+
+  return {
+    certScopes: certOrder.filter((c) => certScopes.has(c)),
+    sourceTypes: sourceOrder.filter((s) => sourceTypes.has(s)),
+    academies: [...academies].sort(),
+    gyosi: [...gyosiSet].sort((a, b) => numericPrefix(a) - numericPrefix(b)),
+    ilcha: [...ilchaSet].sort((a, b) => numericPrefix(a) - numericPrefix(b)),
+  };
+}
+
+// ===== URL 동기화 =====
+
+interface UrlState {
+  query: string;
+  filters: FilterState;
+}
+
+function parseUrlState(): UrlState {
+  if (typeof window === 'undefined') {
+    return { query: '', filters: emptyFilterState() };
+  }
+  const sp = new URLSearchParams(window.location.search);
+  const filters = emptyFilterState();
+  const setFromCsv = <T extends string>(key: string, into: Set<T>) => {
+    const v = sp.get(key);
+    if (!v) return;
+    for (const item of v.split(',')) {
+      if (item) into.add(item as T);
+    }
+  };
+  setFromCsv('cert', filters.certScopes);
+  setFromCsv('type', filters.sourceTypes);
+  setFromCsv('academy', filters.academies);
+  setFromCsv('session', filters.sessions);
+  return { query: sp.get('q') ?? '', filters };
+}
+
+function writeUrlState(query: string, filters: FilterState) {
+  if (typeof window === 'undefined') return;
+  const sp = new URLSearchParams();
+  if (query.trim()) sp.set('q', query.trim());
+  if (filters.certScopes.size) sp.set('cert', [...filters.certScopes].join(','));
+  if (filters.sourceTypes.size) sp.set('type', [...filters.sourceTypes].join(','));
+  if (filters.academies.size) sp.set('academy', [...filters.academies].join(','));
+  if (filters.sessions.size) sp.set('session', [...filters.sessions].join(','));
+  const qs = sp.toString();
+  const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
+  window.history.replaceState(null, '', newUrl);
+}

@@ -1,0 +1,15 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SearchApp from '../components/SearchApp';
+---
+<BaseLayout title="kpcitpe-search">
+  <main class="mx-auto max-w-6xl px-4 py-6">
+    <header class="mb-5">
+      <h1 class="text-xl font-bold text-gray-900">kpcitpe-search</h1>
+      <p class="mt-1 text-sm text-gray-500">
+        정보관리 / 컴시응 기술사 기출·합숙·모의 통합 검색
+      </p>
+    </header>
+    <SearchApp client:load />
+  </main>
+</BaseLayout>

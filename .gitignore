@@ -1,0 +1,17 @@
+node_modules
+dist
+.astro
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+public/data/
+
+# 빌드 산출물 — CI에서 자동 생성
+/data/problems.json
+/data/stats.json
+
+# 로컬 Claude Code 설정
+.claude/
+

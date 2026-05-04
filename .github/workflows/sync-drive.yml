@@ -1,0 +1,61 @@
+name: Sync Drive Mappings
+
+on:
+  schedule:
+    # 매일 KST 03:00 (UTC 18:00)
+    - cron: '0 18 * * *'
+  workflow_dispatch:
+    # Actions 탭에서 수동 실행 가능
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: sync-drive
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync mappings from Drive
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          DRIVE_ROOT_FOLDER_ID: ${{ secrets.DRIVE_ROOT_FOLDER_ID }}
+        run: npm run sync:drive
+
+      - name: Commit & push if changed
+        id: commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet -- data/mappings/explanation-files.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "변경 없음"
+          else
+            git config user.name "kpc-bot"
+            git config user.email "kpc-bot@users.noreply.github.com"
+            git add data/mappings/explanation-files.json
+            git commit -m "chore: auto-sync drive mappings"
+            git push
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Trigger build & deploy (if changed)
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run build-and-deploy.yml --ref main
