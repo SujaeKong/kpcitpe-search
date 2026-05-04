@@ -49,7 +49,6 @@ export default function ExplanationModal({ open, onClose, problem }: Props) {
 
   const fileId = problem.explanationFileId;
   const previewUrl = `https://drive.google.com/file/d/${fileId}/preview`;
-  const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
   const externalUrl = `https://drive.google.com/file/d/${fileId}/view`;
 
   const sessionLabel =
@@ -98,13 +97,6 @@ export default function ExplanationModal({ open, onClose, problem }: Props) {
             >
               ↗ 새 탭
             </a>
-            <a
-              href={downloadUrl}
-              className="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-50"
-              title="PDF 다운로드"
-            >
-              ⬇ 다운로드
-            </a>
             <button
               type="button"
               onClick={onClose}
@@ -140,12 +132,6 @@ export default function ExplanationModal({ open, onClose, problem }: Props) {
                   className="rounded bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700"
                 >
                   ↗ 새 탭에서 열기
-                </a>
-                <a
-                  href={downloadUrl}
-                  className="rounded border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                >
-                  ⬇ 다운로드
                 </a>
               </div>
             </div>

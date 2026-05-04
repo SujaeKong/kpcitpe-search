@@ -25,9 +25,6 @@ export default function ProblemCard({ result }: Props) {
   const numLabel = p.questionLabel ? `${p.questionLabel}번` : '';
 
   const hasExplanation = Boolean(p.explanationFileId);
-  const downloadUrl = hasExplanation
-    ? `https://drive.google.com/uc?export=download&id=${p.explanationFileId}`
-    : null;
   const externalUrl = hasExplanation
     ? `https://drive.google.com/file/d/${p.explanationFileId}/view`
     : null;
@@ -72,21 +69,13 @@ export default function ProblemCard({ result }: Props) {
 
       <footer className="mt-3 flex items-center gap-2 text-sm">
         {hasExplanation ? (
-          <>
-            <button
-              type="button"
-              onClick={handleOpenExplanation}
-              className="rounded border border-gray-300 px-2.5 py-1 hover:bg-gray-50"
-            >
-              📖 해설지 보기
-            </button>
-            <a
-              href={downloadUrl!}
-              className="rounded border border-gray-300 px-2.5 py-1 hover:bg-gray-50"
-            >
-              ⬇ 다운로드
-            </a>
-          </>
+          <button
+            type="button"
+            onClick={handleOpenExplanation}
+            className="rounded border border-gray-300 px-2.5 py-1 hover:bg-gray-50"
+          >
+            📖 해설지 보기
+          </button>
         ) : (
           <span className="text-xs text-gray-400">해설지 준비 중</span>
         )}
