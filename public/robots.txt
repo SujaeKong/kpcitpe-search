@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# 검색 인덱스 데이터 — 직접 크롤링 차단 (사이트 검색을 통해 접근)
+Disallow: /data/
