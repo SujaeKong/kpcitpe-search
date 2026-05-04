@@ -421,34 +421,49 @@ async function syncMappings(): Promise<{ map: MappingResult; stats: SyncStats }>
         const round = extractRoundFromFolderName(rf.name);
         if (!round) {
           stats.스킵된_폴더++;
-          continue; // 옛 회차 (연월 없음) — 사용자 지시로 제외
+          continue;
         }
         const target = (map.합숙[round] ??= {});
+        let folderMatched = 0;
+        const folderFails: string[] = [];
         for (const f of pdfs) {
           const sessionKey = parseHapsuk(f.name);
           if (!sessionKey) {
             stats.파싱_실패_파일++;
+            if (folderFails.length < 2) folderFails.push(f.name);
             continue;
           }
+          folderMatched++;
           if (!target[sessionKey]) {
             target[sessionKey] = { id: f.id, name: f.name };
             stats.합숙_매핑++;
           }
         }
+        if (folderMatched === 0 && pdfs.length > 0) {
+          console.log(`  · [합숙 ${rf.name}] 매칭 0/${pdfs.length}, 샘플:`);
+          for (const fn of folderFails) console.log(`      ${fn}`);
+        }
       } else if (category === '모의해설집') {
-        // 모의는 폴더명에서 round를 못 알아도 파일명에서 알 수 있음
+        let folderMatched = 0;
+        const folderFails: string[] = [];
         for (const f of pdfs) {
           const parsed = parseMoui(f.name);
           if (!parsed) {
             stats.파싱_실패_파일++;
+            if (folderFails.length < 2) folderFails.push(f.name);
             continue;
           }
+          folderMatched++;
           const academy = (map.모의['KPC'] ??= {});
           const round = (academy[parsed.round] ??= {});
           if (!round[parsed.session]) {
             round[parsed.session] = { id: f.id, name: f.name };
             stats.모의_매핑++;
           }
+        }
+        if (folderMatched === 0 && pdfs.length > 0) {
+          console.log(`  · [모의 ${rf.name}] 매칭 0/${pdfs.length}, 샘플:`);
+          for (const fn of folderFails) console.log(`      ${fn}`);
         }
       }
     }
