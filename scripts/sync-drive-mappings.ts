@@ -45,8 +45,9 @@ function makeDriveClient(): drive_v3.Drive {
   const creds = loadCredentials();
   const auth = new google.auth.GoogleAuth({
     credentials: creds as any,
-    // 'drive' = read + write. PDF에 copyRequiresWriterPermission 설정에 필요.
-    scopes: ['https://www.googleapis.com/auth/drive'],
+    // readonly로 충분 — copyRequiresWriterPermission은 개인 Drive에서 owner만 변경 가능해
+    // 자동 lock 비활성화. 페이지 측 차단(다운로드 버튼 제거 + /preview)으로 대응.
+    scopes: ['https://www.googleapis.com/auth/drive.readonly'],
   });
   return google.drive({ version: 'v3', auth });
 }
@@ -57,7 +58,6 @@ interface DriveFile {
   id: string;
   name: string;
   mimeType: string;
-  copyRequiresWriterPermission?: boolean;
 }
 
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
@@ -69,7 +69,7 @@ async function listChildren(drive: drive_v3.Drive, folderId: string): Promise<Dr
   do {
     const res = await drive.files.list({
       q: `'${folderId}' in parents and trashed = false`,
-      fields: 'nextPageToken, files(id, name, mimeType, copyRequiresWriterPermission)',
+      fields: 'nextPageToken, files(id, name, mimeType)',
       pageSize: 1000,
       pageToken,
     });
@@ -80,7 +80,6 @@ async function listChildren(drive: drive_v3.Drive, folderId: string): Promise<Dr
           id: f.id,
           name: f.name.normalize('NFC').trim(),
           mimeType: f.mimeType,
-          copyRequiresWriterPermission: f.copyRequiresWriterPermission ?? false,
         });
       }
     }
@@ -89,31 +88,11 @@ async function listChildren(drive: drive_v3.Drive, folderId: string): Promise<Dr
   return out;
 }
 
-/**
- * PDF 파일에 다운로드/인쇄/복사 차단 설정 적용 (소유자 외 viewer는 다운로드 불가).
- * 이미 true면 skip (idempotent).
- *
- * @returns lock 적용된 파일 수
- */
-async function lockPdfsIfNeeded(
-  drive: drive_v3.Drive,
-  pdfs: DriveFile[],
-): Promise<number> {
-  let locked = 0;
-  for (const f of pdfs) {
-    if (f.copyRequiresWriterPermission) continue; // 이미 잠김
-    try {
-      await drive.files.update({
-        fileId: f.id,
-        requestBody: { copyRequiresWriterPermission: true },
-      });
-      locked++;
-    } catch (err) {
-      console.warn(`  ⚠ lock 실패: ${f.name} (${(err as Error).message})`);
-    }
-  }
-  return locked;
-}
+// 자동 lock 함수는 제거됨.
+// copyRequiresWriterPermission은 개인 Drive에서 파일 소유자만 변경 가능해
+// SA(편집자 권한)으로도 적용 실패. 페이지 측 차단으로 대응:
+//  - ProblemCard/ExplanationModal 다운로드 버튼 제거됨
+//  - 외부 링크는 /preview (Drive UI 가림)
 
 /**
  * 폴더 트리에서 PDF만 모음. 깊이 제한(maxDepth)으로 폭주 방지.
@@ -361,7 +340,6 @@ interface SyncStats {
   모의_매핑: number;
   스킵된_폴더: number;
   파싱_실패_파일: number;
-  lock_적용: number;
 }
 
 async function syncMappings(): Promise<{ map: MappingResult; stats: SyncStats }> {
@@ -376,7 +354,6 @@ async function syncMappings(): Promise<{ map: MappingResult; stats: SyncStats }>
     모의_매핑: 0,
     스킵된_폴더: 0,
     파싱_실패_파일: 0,
-    lock_적용: 0,
   };
 
   console.log('▶ Drive 루트 폴더 자식 조회');
@@ -397,9 +374,6 @@ async function syncMappings(): Promise<{ map: MappingResult; stats: SyncStats }>
 
       // 회차 폴더 안 PDF 수집 (자식 폴더 1단계까지 추적)
       const pdfs = await collectPdfs(drive, rf.id, 2);
-
-      // 다운로드/인쇄/복사 차단 (idempotent — 이미 적용된 파일은 skip)
-      stats.lock_적용 += await lockPdfsIfNeeded(drive, pdfs);
 
       if (category === '기출') {
         const round = extractKichulRoundFromFolderName(rf.name);
@@ -509,7 +483,6 @@ async function main() {
   console.log(`  모의  : ${stats.모의_매핑}건`);
   console.log(`  스킵 폴더 (회차 정보 없음): ${stats.스킵된_폴더}`);
   console.log(`  파싱 실패 파일: ${stats.파싱_실패_파일}`);
-  console.log(`  다운로드 차단 신규 적용: ${stats.lock_적용}건`);
   console.log(`\n✔ ${path.relative(ROOT, OUT_FILE)} 갱신`);
 }
 
