@@ -161,46 +161,45 @@ function parseMoui(name: string): { round: string; session: string } | null {
 }
 
 /**
- * 기출 파일명 → (session, certScope)
- * 신형 (138회): '138회_기출풀이_정보관리 1교시_보완.pdf'
- * 중형 (117회): '1교시_KPC 제117회_기출문제풀이_정보관리_이OO.pdf'
- * 구형 (89회): '제89회정보처리기술사기출문제풀이-정보관리기술사 1교시.pdf'
+ * 기출 파일명 → (session, certScope).
+ *
+ * 변형이 매우 다양하므로 키워드 기반 일반 매처 사용:
+ *  - 교시: 파일명 어디든 `N교시` (모자라면 `N`다음 공백/구분자) 추출
+ *  - 종목: 긴 키워드 우선 (컴퓨터시스템응용 > 정보관리 > 공통),
+ *          없으면 단어경계로 짧은 키워드 (응용 / 관리)
+ *
+ * 무시 패턴: 통합본, 기출분석, 동기회 등.
  */
 function parseKichul(name: string): {
   session: string;
   certScope: '정보관리' | '컴시응' | '공통';
   isBowan: boolean;
 } | null {
-  // 통합본 등 종목 단위 묶음은 무시 (개별 교시만 매핑)
+  // 종목·교시 단위가 아닌 통합본·분석본은 무시
   if (/_기출풀이\(\d+\)\.pdf$/.test(name)) return null;
+  if (/^\d+\.\s+기출분석/.test(name)) return null;
+  if (name.includes('동기회')) return null;
 
-  const isBowan = /보완/.test(name);
+  const sessionMatch = name.match(/(\d+)\s*교시/);
+  if (!sessionMatch) return null;
+  const session = sessionMatch[1];
 
-  // 신형: NN회_기출풀이_종목 N교시[_보완]
-  let m = name.match(/_기출풀이_(\S+?)\s+(\d+)교시/);
-  if (m) {
-    const cert = CERT_NORM(m[1]);
-    if (!cert) return null;
-    return { session: m[2], certScope: cert, isBowan };
-  }
+  let cert: '정보관리' | '컴시응' | '공통' | null = null;
+  // 긴 키워드 우선 검사
+  if (/컴퓨터시스템응용|시스템응용|컴시응|조직응용/.test(name)) cert = '컴시응';
+  else if (/정보관리/.test(name)) cert = '정보관리';
+  else if (/공통/.test(name)) cert = '공통';
+  // fallback: 단어경계가 있는 짧은 키워드 (관리/응용)
+  else if (/(?:^|[\s_\-])응용(?:$|[\s_\-.])/.test(name)) cert = '컴시응';
+  else if (/(?:^|[\s_\-])관리(?:$|[\s_\-.])/.test(name)) cert = '정보관리';
 
-  // 중형: N교시_KPC[_]제NNN회_기출문제풀이_종목_이름
-  m = name.match(/^(\d+)교시_KPC[\s_]제\d+회_기출문제풀이_(\S+?)_/);
-  if (m) {
-    const cert = CERT_NORM(m[2]);
-    if (!cert) return null;
-    return { session: m[1], certScope: cert, isBowan: false };
-  }
+  if (!cert) return null;
 
-  // 구형: 제NN회정보처리기술사기출문제풀이-종목기술사 N교시
-  m = name.match(/제\d+회정보처리기술사기출문제풀이-(\S+?)기술사\s+(\d+)교시/);
-  if (m) {
-    const cert = CERT_NORM(m[1]);
-    if (!cert) return null;
-    return { session: m[2], certScope: cert, isBowan: false };
-  }
-
-  return null;
+  return {
+    session,
+    certScope: cert,
+    isBowan: /보완/.test(name),
+  };
 }
 
 // ===== 폴더명에서 round 추출 =====
