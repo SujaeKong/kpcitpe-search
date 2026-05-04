@@ -178,16 +178,30 @@ function parseHapsuk(name: string): string | null {
  * 해설집/해설 키워드만 매핑 (모범답안/문제지 제외).
  */
 function parseMoui(name: string): { round: string; session: string } | null {
-  // 모범답안·문제지·문제 PDF 제외
   if (/모범답안|문제지|문제\s*\.pdf$|^\d+교시문제/.test(name)) return null;
   if (!/해설집|해설/.test(name)) return null;
 
-  // 신형: _해설집_YYYYMM_N교시
+  // 패턴 A (신형): _해설집_YYYYMM_N교시
   let m = name.match(/_해설집_(\d{4})(\d{2})_(\d+)교시/);
   if (m) return { round: `${m[1]}.${m[2]}`, session: m[3] };
 
-  // 구형: N교시해설-제M회(YYYY년MM월)
+  // 패턴 B (구형): N교시해설-제M회(YYYY년MM월)
   m = name.match(/(\d+)교시해설.*\((\d{4})년(\d{1,2})월\)/);
+  if (m) return { round: `${m[2]}.${m[3].padStart(2, '0')}`, session: m[1] };
+
+  // 패턴 C: '_해설집_NN회_YYYYMM_[종목_]?S교시_'
+  //  - 'KPC기술사모의고사_해설집_33회_201111_3교시_김성민PE.pdf'
+  //  - 'KPC기술사모의고사_해설집_31회_201104_조직응용_1교시_강자원PE_...pdf'
+  m = name.match(/_해설집_\d+회_(\d{4})(\d{2})_(?:\S+?_)?(\d+)교시/);
+  if (m) return { round: `${m[1]}.${m[2]}`, session: m[3] };
+
+  // 패턴 D: 대괄호 prefix '[종류]N교시 해설집-제M회(YYYY년MM월)...'
+  //  - '[정보처리통합출제]1교시 해설집-제32회(2011년10월)KPC기술사IMPACT...pdf'
+  m = name.match(/\][\s_]?(\d+)교시\s+해설집-제\d+회\((\d{4})년(\d{1,2})월\)/);
+  if (m) return { round: `${m[2]}.${m[3].padStart(2, '0')}`, session: m[1] };
+
+  // 패턴 E (fallback): 'N교시...해설...(YYYY년MM월)'
+  m = name.match(/(\d+)교시.*해설.*\((\d{4})년(\d{1,2})월\)/);
   if (m) return { round: `${m[2]}.${m[3].padStart(2, '0')}`, session: m[1] };
 
   return null;
