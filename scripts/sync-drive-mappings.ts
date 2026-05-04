@@ -295,19 +295,28 @@ async function syncMappings(): Promise<{ map: MappingResult; stats: SyncStats }>
           continue;
         }
         const target = (map.기출[round] ??= {});
+        let folderMatched = 0;
+        const folderFails: string[] = [];
         for (const f of pdfs) {
           const parsed = parseKichul(f.name);
           if (!parsed) {
             stats.파싱_실패_파일++;
+            if (folderFails.length < 2) folderFails.push(f.name);
             continue;
           }
-          // 키: {session}_{certScope}
+          folderMatched++;
           const key = `${parsed.session}_${parsed.certScope}`;
-          // 보완본 우선: 보완 없는 게 먼저 들어와도 보완본이 들어오면 덮어씀
-          if (!target[key] || parsed.isBowan) {
+          const wasEmpty = !target[key];
+          // 보완본 우선: 같은 키에 보완본이 들어오면 덮어씀
+          if (wasEmpty || parsed.isBowan) {
             target[key] = { id: f.id, name: f.name };
-            if (!target[key]) stats.기출_매핑++;
+            if (wasEmpty) stats.기출_매핑++;
           }
+        }
+        // 폴더에 PDF가 있는데 한 건도 매칭 못 했으면 샘플 파일명 출력
+        if (folderMatched === 0 && pdfs.length > 0) {
+          console.log(`  · [기출 ${rf.name}] 매칭 0/${pdfs.length}, 샘플:`);
+          for (const fn of folderFails) console.log(`      ${fn}`);
         }
       } else if (category === '합숙') {
         const round = extractRoundFromFolderName(rf.name);
