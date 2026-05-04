@@ -112,6 +112,7 @@ function loadExplanationMap(): ExplanationMap {
  * problem에 explanationFileId / explanationFileName을 채움 (in-place).
  * 키 규칙:
  *   기출:  {round}.{session}
+ *   기출:  {round}.{session}_{certScope}
  *   합숙:  {round}.{session}_{sessionPart}
  *   모의:  {academy}.{round}.{session}
  *   자체:  {academy}.{round}.{session}
@@ -121,7 +122,9 @@ function applyExplanationMap(problems: Problem[], map: ExplanationMap): number {
   for (const p of problems) {
     let entry: ExplanationEntry | undefined;
     if (p.sourceType === '기출') {
-      entry = map.기출?.[p.round]?.[p.session];
+      // sync에서 키를 `${session}_${certScope}` 형태로 저장 (정보관리/컴시응 분리)
+      const certKey = `${p.session}_${p.certScope}`;
+      entry = map.기출?.[p.round]?.[certKey] ?? map.기출?.[p.round]?.[p.session];
     } else if (p.sourceType === '합숙') {
       const key = p.sessionPart ? `${p.session}_${p.sessionPart}` : p.session;
       entry = map.합숙?.[p.round]?.[key];
