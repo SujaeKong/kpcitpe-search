@@ -1,0 +1,155 @@
+---
+import type { GetStaticPaths } from 'astro';
+import { Image } from 'astro:assets';
+import problemsRaw from '../../../../data/problems.json';
+import type { Problem } from '../../../lib/types';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import ProblemCard from '../../../components/ProblemCard';
+import kpcLogo from '../../../assets/kpc-logo.png';
+
+export const getStaticPaths = (() => {
+  const problems = problemsRaw as Problem[];
+
+  // (sourceType, round) → Problem[] 그룹
+  const groups = new Map<string, Problem[]>();
+  for (const p of problems) {
+    const key = `${p.sourceType}|${p.round}`;
+    let g = groups.get(key);
+    if (!g) {
+      g = [];
+      groups.set(key, g);
+    }
+    g.push(p);
+  }
+
+  // 각 그룹: 종목 → 교시/일차 → sessionPart → 문항번호 정렬
+  const certOrder: Record<string, number> = { 정보관리: 0, 컴시응: 1, 공통: 2 };
+  const sessionKey = (p: Problem) => {
+    const m = p.session.match(/^(\d+)/);
+    const num = m ? parseInt(m[1], 10) : 999;
+    return num;
+  };
+  const partKey = (p: Problem) => {
+    if (!p.sessionPart) return 0;
+    const m = p.sessionPart.match(/^(\d+)/);
+    return m ? parseInt(m[1], 10) : 999;
+  };
+
+  return [...groups.entries()].map(([key, group]) => {
+    const [sourceType, round] = key.split('|');
+    const sorted = [...group].sort((a, b) => {
+      const co = (certOrder[a.certScope] ?? 9) - (certOrder[b.certScope] ?? 9);
+      if (co !== 0) return co;
+      const so = sessionKey(a) - sessionKey(b);
+      if (so !== 0) return so;
+      const po = partKey(a) - partKey(b);
+      if (po !== 0) return po;
+      const qa = a.questionNumber ?? 9999;
+      const qb = b.questionNumber ?? 9999;
+      return qa - qb;
+    });
+    return {
+      params: { sourceType, round },
+      props: { problems: sorted, sourceType, round },
+    };
+  });
+}) satisfies GetStaticPaths;
+
+interface Props {
+  problems: Problem[];
+  sourceType: string;
+  round: string;
+}
+
+const { problems, sourceType, round } = Astro.props;
+const roundLabel = problems[0]?.roundLabel ?? round;
+const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+// 카테고리별 통계
+const byCert: Record<string, number> = {};
+const bySession = new Set<string>();
+let withExplanation = 0;
+for (const p of problems) {
+  byCert[p.certScope] = (byCert[p.certScope] ?? 0) + 1;
+  if (p.sessionType === '교시') bySession.add(`${p.session}교시`);
+  else bySession.add(p.session);
+  if (p.explanationFileId) withExplanation++;
+}
+
+const academy = problems[0]?.academy;
+---
+<BaseLayout title={`${roundLabel} | kpcitpe-search`}>
+  <main class="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-6">
+    <header class="mb-6 flex items-center gap-3">
+      <a href={`${baseUrl}/`} class="shrink-0">
+        <Image
+          src={kpcLogo}
+          alt="KPC 기술사회"
+          width={144}
+          height={144}
+          densities={[1, 2, 3]}
+          class="h-12 w-12 rounded-full shadow-sm ring-1 ring-red-100"
+        />
+      </a>
+      <div class="min-w-0">
+        <a href={`${baseUrl}/`} class="text-xs text-indigo-600 hover:underline">
+          ← 검색으로
+        </a>
+        <h1 class="text-xl font-bold text-gray-900">
+          <span class="mr-2 inline-block rounded bg-indigo-100 px-1.5 py-0.5 text-xs font-medium text-indigo-800 align-middle">
+            {sourceType}
+          </span>
+          {roundLabel}
+          {academy && (
+            <span class="ml-2 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800 align-middle">
+              {academy}
+            </span>
+          )}
+        </h1>
+        <p class="mt-0.5 text-xs text-gray-500">
+          총 {problems.length}건
+          {withExplanation > 0 && ` · 해설지 ${withExplanation}건 매핑됨`}
+        </p>
+      </div>
+    </header>
+
+    <div class="mb-4 flex flex-wrap gap-1.5 text-xs">
+      {Object.entries(byCert).map(([cert, count]) => (
+        <span class="inline-flex items-center gap-1 rounded bg-emerald-100 px-2 py-1 text-emerald-800">
+          <strong>{cert}</strong>
+          <span class="text-emerald-600">{count}</span>
+        </span>
+      ))}
+      {[...bySession].sort().map((s) => (
+        <span class="inline-flex items-center rounded bg-slate-100 px-2 py-1 text-slate-700">
+          {s}
+        </span>
+      ))}
+    </div>
+
+    <ul class="flex-1 space-y-3">
+      {problems.map((p) => (
+        <li>
+          <ProblemCard client:visible result={{ problem: p }} />
+        </li>
+      ))}
+    </ul>
+
+    <footer class="mt-12 border-t border-gray-200 pt-5 pb-3">
+      <div class="flex flex-col items-center gap-1.5 text-xs text-gray-500 sm:flex-row sm:justify-center">
+        <span class="inline-flex items-center gap-1.5">
+          <span>Powered by</span>
+          <Image
+            src={kpcLogo}
+            alt=""
+            width={60}
+            height={60}
+            densities={[1, 2, 3]}
+            class="h-5 w-5 rounded-full"
+          />
+          <span class="font-semibold text-red-600">KPC 기술사회</span>
+        </span>
+      </div>
+    </footer>
+  </main>
+</BaseLayout>

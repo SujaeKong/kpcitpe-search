@@ -10,8 +10,8 @@ interface CachedShape {
   problems: Problem[];
 }
 
-const CACHE_KEY = 'kpcitpe.problems.v2';
-const VERSION = 2;
+const CACHE_KEY = 'kpcitpe.problems.v3';
+const VERSION = 3;
 
 function dataUrl(): string {
   const base = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
