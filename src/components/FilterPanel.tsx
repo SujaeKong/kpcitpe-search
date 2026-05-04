@@ -1,6 +1,16 @@
 import type { FilterState } from '../lib/search';
 import type { CertScope, SourceType } from '../lib/types';
 
+export interface RoundOption {
+  order: number;
+  label: string;
+}
+
+export interface RoundGroup {
+  sourceType: SourceType;
+  rounds: RoundOption[];
+}
+
 interface Props {
   filters: FilterState;
   onChange: (next: FilterState) => void;
@@ -13,6 +23,8 @@ interface Props {
     gyosi: string[];
     /** 합숙 일차 (예: '1일차'~'8일차') */
     ilcha: string[];
+    /** sourceType별 회차 옵션 (회차 범위 dropdown용) */
+    roundsByType: RoundGroup[];
   };
 }
 
@@ -23,6 +35,24 @@ export default function FilterPanel({ filters, onChange, options }: Props) {
     else next.add(value);
     return next;
   };
+
+  const resetAll = () =>
+    onChange({
+      certScopes: new Set(),
+      sourceTypes: new Set(),
+      academies: new Set(),
+      sessions: new Set(),
+      roundOrderMin: undefined,
+      roundOrderMax: undefined,
+    });
+
+  const totalActive =
+    filters.certScopes.size +
+    filters.sourceTypes.size +
+    filters.academies.size +
+    filters.sessions.size +
+    (filters.roundOrderMin !== undefined ? 1 : 0) +
+    (filters.roundOrderMax !== undefined ? 1 : 0);
 
   return (
     <aside className="space-y-4 rounded-lg border border-gray-200 bg-white p-4 text-sm">
@@ -100,21 +130,60 @@ export default function FilterPanel({ filters, onChange, options }: Props) {
         </Group>
       )}
 
-      {(filters.certScopes.size +
-        filters.sourceTypes.size +
-        filters.academies.size +
-        filters.sessions.size >
-        0) && (
+      {options.roundsByType.length > 0 && (
+        <Group label="회차 범위">
+          <div className="flex flex-wrap items-center gap-1.5 text-xs">
+            <select
+              value={filters.roundOrderMin ?? ''}
+              onChange={(e) =>
+                onChange({
+                  ...filters,
+                  roundOrderMin: e.target.value ? Number(e.target.value) : undefined,
+                })
+              }
+              className="rounded border border-gray-300 bg-white px-2 py-1"
+            >
+              <option value="">처음부터</option>
+              {options.roundsByType.map((g) => (
+                <optgroup key={g.sourceType} label={g.sourceType}>
+                  {g.rounds.map((r) => (
+                    <option key={`${g.sourceType}-${r.order}`} value={r.order}>
+                      {r.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <span className="text-gray-400">~</span>
+            <select
+              value={filters.roundOrderMax ?? ''}
+              onChange={(e) =>
+                onChange({
+                  ...filters,
+                  roundOrderMax: e.target.value ? Number(e.target.value) : undefined,
+                })
+              }
+              className="rounded border border-gray-300 bg-white px-2 py-1"
+            >
+              <option value="">끝까지</option>
+              {options.roundsByType.map((g) => (
+                <optgroup key={g.sourceType} label={g.sourceType}>
+                  {g.rounds.map((r) => (
+                    <option key={`${g.sourceType}-${r.order}`} value={r.order}>
+                      {r.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </div>
+        </Group>
+      )}
+
+      {totalActive > 0 && (
         <button
           type="button"
-          onClick={() =>
-            onChange({
-              certScopes: new Set(),
-              sourceTypes: new Set(),
-              academies: new Set(),
-              sessions: new Set(),
-            })
-          }
+          onClick={resetAll}
           className="text-xs text-gray-500 underline hover:text-gray-700"
         >
           필터 초기화

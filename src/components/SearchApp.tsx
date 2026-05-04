@@ -78,7 +78,9 @@ export default function SearchApp() {
     filters.certScopes.size +
     filters.sourceTypes.size +
     filters.academies.size +
-    filters.sessions.size;
+    filters.sessions.size +
+    (filters.roundOrderMin !== undefined ? 1 : 0) +
+    (filters.roundOrderMax !== undefined ? 1 : 0);
 
   const visible = results.slice(0, pageSize);
   const hasMore = pageSize < results.length;
@@ -229,8 +231,10 @@ function extractOptions(problems: Problem[]) {
   const certScopes = new Set<CertScope>();
   const sourceTypes = new Set<SourceType>();
   const academies = new Set<string>();
-  const gyosiSet = new Set<string>();   // 통합 교시: 기출/모의의 session + 합숙의 sessionPart 숫자부분
+  const gyosiSet = new Set<string>();   // 통합 교시
   const ilchaSet = new Set<string>();   // 합숙 일차
+  // sourceType별 회차 (label, order) 추출 — Map으로 dedup
+  const roundMaps = new Map<SourceType, Map<number, string>>();
 
   for (const p of problems) {
     certScopes.add(p.certScope);
@@ -241,10 +245,15 @@ function extractOptions(problems: Problem[]) {
     } else {
       ilchaSet.add(p.session);
       if (p.sessionPart) {
-        // '1교시' → '1' 로 숫자만 추출하여 통합 교시 칩에 합류
         gyosiSet.add(p.sessionPart.replace('교시', ''));
       }
     }
+    let rm = roundMaps.get(p.sourceType);
+    if (!rm) {
+      rm = new Map();
+      roundMaps.set(p.sourceType, rm);
+    }
+    if (!rm.has(p.roundOrder)) rm.set(p.roundOrder, p.roundLabel);
   }
 
   const certOrder: CertScope[] = ['정보관리', '컴시응', '공통'];
@@ -254,12 +263,24 @@ function extractOptions(problems: Problem[]) {
     return m ? parseInt(m[1], 10) : 999;
   };
 
+  // sourceType별 회차 그룹 (최신순)
+  const roundsByType = sourceOrder
+    .filter((s) => roundMaps.has(s))
+    .map((sourceType) => {
+      const rm = roundMaps.get(sourceType)!;
+      const rounds = [...rm.entries()]
+        .sort((a, b) => b[0] - a[0]) // 최신 회차 우선
+        .map(([order, label]) => ({ order, label }));
+      return { sourceType, rounds };
+    });
+
   return {
     certScopes: certOrder.filter((c) => certScopes.has(c)),
     sourceTypes: sourceOrder.filter((s) => sourceTypes.has(s)),
     academies: [...academies].sort(),
     gyosi: [...gyosiSet].sort((a, b) => numericPrefix(a) - numericPrefix(b)),
     ilcha: [...ilchaSet].sort((a, b) => numericPrefix(a) - numericPrefix(b)),
+    roundsByType,
   };
 }
 
@@ -289,6 +310,11 @@ function parseUrlState(): UrlState {
   setFromCsv('academy', filters.academies);
   setFromCsv('session', filters.sessions);
 
+  const rmin = sp.get('rmin');
+  const rmax = sp.get('rmax');
+  if (rmin) filters.roundOrderMin = Number(rmin);
+  if (rmax) filters.roundOrderMax = Number(rmax);
+
   const rawSort = sp.get('sort');
   const sort: SortMode | undefined =
     rawSort === 'relevance' || rawSort === 'newest' || rawSort === 'oldest' ? rawSort : undefined;
@@ -304,6 +330,8 @@ function writeUrlState(query: string, filters: FilterState, sort: SortMode | und
   if (filters.sourceTypes.size) sp.set('type', [...filters.sourceTypes].join(','));
   if (filters.academies.size) sp.set('academy', [...filters.academies].join(','));
   if (filters.sessions.size) sp.set('session', [...filters.sessions].join(','));
+  if (filters.roundOrderMin !== undefined) sp.set('rmin', String(filters.roundOrderMin));
+  if (filters.roundOrderMax !== undefined) sp.set('rmax', String(filters.roundOrderMax));
   if (sort) sp.set('sort', sort);
   const qs = sp.toString();
   const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
