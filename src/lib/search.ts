@@ -28,11 +28,15 @@ export interface FilterState {
   roundOrderMax?: number;
 }
 
+export type SortMode = 'relevance' | 'newest' | 'oldest';
+
 export interface SearchOptions {
   query: string;
   filters: FilterState;
   /** 최대 결과 수 (성능 보호) */
   limit?: number;
+  /** 정렬 모드. 미지정 시 검색어 있으면 'relevance', 없으면 'newest' */
+  sort?: SortMode;
 }
 
 export interface SearchResult {
@@ -63,25 +67,14 @@ export class SearchIndex {
     this.fuse = new Fuse(problems, FUSE_OPTIONS);
   }
 
-  search({ query, filters, limit = 200 }: SearchOptions): SearchResult[] {
+  search({ query, filters, limit = 200, sort }: SearchOptions): SearchResult[] {
     const q = query.trim();
+    const effectiveSort: SortMode = sort ?? (q.length === 0 ? 'newest' : 'relevance');
 
-    // 1) 검색: 쿼리 비어있으면 전체(최신 회차부터), 아니면 Fuse 점수순
+    // 1) 후보 추출
     let candidates: SearchResult[];
     if (q.length === 0) {
       candidates = this.all.map((p) => ({ problem: p }));
-      // 비검색 시 최신 회차 우선 — sourceType 가중치 + roundOrder DESC
-      // (sourceType 우선순위: 기출 < 합숙 < 모의 < 자체 — 동순위 회차일 때만 적용)
-      const srcOrder: Record<string, number> = { 기출: 0, 합숙: 1, 모의: 2, 자체: 3 };
-      candidates.sort((a, b) => {
-        const ro = b.problem.roundOrder - a.problem.roundOrder;
-        if (ro !== 0) return ro;
-        const so = (srcOrder[a.problem.sourceType] ?? 99) - (srcOrder[b.problem.sourceType] ?? 99);
-        if (so !== 0) return so;
-        const qa = a.problem.questionNumber ?? 9999;
-        const qb = b.problem.questionNumber ?? 9999;
-        return qa - qb;
-      });
     } else {
       candidates = this.fuse.search(q, { limit: limit * 4 }).map((r) => ({
         problem: r.item,
@@ -90,7 +83,23 @@ export class SearchIndex {
       }));
     }
 
-    // 2) 필터
+    // 2) 정렬
+    if (effectiveSort === 'newest' || effectiveSort === 'oldest') {
+      const dir = effectiveSort === 'newest' ? -1 : 1;
+      const srcOrder: Record<string, number> = { 기출: 0, 합숙: 1, 모의: 2, 자체: 3 };
+      candidates.sort((a, b) => {
+        const ro = (a.problem.roundOrder - b.problem.roundOrder) * dir;
+        if (ro !== 0) return ro;
+        const so = (srcOrder[a.problem.sourceType] ?? 99) - (srcOrder[b.problem.sourceType] ?? 99);
+        if (so !== 0) return so;
+        const qa = a.problem.questionNumber ?? 9999;
+        const qb = b.problem.questionNumber ?? 9999;
+        return qa - qb;
+      });
+    }
+    // relevance 모드는 Fuse가 이미 score 순으로 정렬해 둠 (검색어 없으면 원본 순서 유지)
+
+    // 3) 필터
     const filtered = candidates.filter((c) => matchesFilters(c.problem, filters));
     return filtered.slice(0, limit);
   }

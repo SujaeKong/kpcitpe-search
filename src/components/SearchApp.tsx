@@ -5,11 +5,13 @@ import {
   SearchIndex,
   type FilterState,
   type SearchResult,
+  type SortMode,
 } from '../lib/search';
 import type { CertScope, Problem, SourceType } from '../lib/types';
 import SearchBar from './SearchBar';
 import FilterPanel from './FilterPanel';
 import ProblemCard from './ProblemCard';
+import SortBar from './SortBar';
 
 const RESULT_LIMIT = 200;
 const PAGE_SIZE = 30;
@@ -22,7 +24,9 @@ export default function SearchApp() {
   const initialUrl = useMemo(() => parseUrlState(), []);
   const [query, setQuery] = useState<string>(initialUrl.query);
   const [filters, setFilters] = useState<FilterState>(initialUrl.filters);
+  const [sortMode, setSortMode] = useState<SortMode | undefined>(initialUrl.sort);
   const [pageSize, setPageSize] = useState(PAGE_SIZE);
+  const [filtersOpen, setFiltersOpen] = useState(false); // 모바일 drawer
 
   // 데이터 로드
   useEffect(() => {
@@ -51,8 +55,8 @@ export default function SearchApp() {
   // 검색 실행
   const results: SearchResult[] = useMemo(() => {
     if (!index) return [];
-    return index.search({ query, filters, limit: RESULT_LIMIT });
-  }, [index, query, filters]);
+    return index.search({ query, filters, limit: RESULT_LIMIT, sort: sortMode });
+  }, [index, query, filters, sortMode]);
 
   // URL 동기화 (state → URL)
   const skipUrlWrite = useRef(true);
@@ -61,13 +65,20 @@ export default function SearchApp() {
       skipUrlWrite.current = false;
       return;
     }
-    writeUrlState(query, filters);
-  }, [query, filters]);
+    writeUrlState(query, filters, sortMode);
+  }, [query, filters, sortMode]);
 
   // 페이지 사이즈 리셋 (검색/필터 변경 시)
   useEffect(() => {
     setPageSize(PAGE_SIZE);
-  }, [query, filters]);
+  }, [query, filters, sortMode]);
+
+  // 필터 적용 시 모바일 drawer 자동 닫힘 (사용자가 결과 보고 싶음)
+  const filterCount =
+    filters.certScopes.size +
+    filters.sourceTypes.size +
+    filters.academies.size +
+    filters.sessions.size;
 
   const visible = results.slice(0, pageSize);
   const hasMore = pageSize < results.length;
@@ -76,17 +87,79 @@ export default function SearchApp() {
     <div className="space-y-4">
       <SearchBar initial={initialUrl.query} onChange={setQuery} />
 
+      {/* 모바일 필터 토글 + 정렬 */}
+      <div className="flex flex-wrap items-center justify-between gap-2 md:hidden">
+        <button
+          type="button"
+          onClick={() => setFiltersOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded border border-gray-300 bg-white px-3 py-1.5 text-sm hover:bg-gray-50"
+        >
+          ☰ 필터{filterCount > 0 && (
+            <span className="ml-0.5 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-indigo-600 px-1 text-xs font-medium text-white">
+              {filterCount}
+            </span>
+          )}
+        </button>
+        <SortBar
+          value={sortMode ?? (query.trim() ? 'relevance' : 'newest')}
+          onChange={setSortMode}
+          disableRelevance={!query.trim()}
+        />
+      </div>
+
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[16rem_1fr]">
-        <FilterPanel filters={filters} onChange={setFilters} options={options} />
+        {/* 데스크탑: 사이드바, 모바일: drawer */}
+        <div className="hidden md:block">
+          <FilterPanel filters={filters} onChange={setFilters} options={options} />
+        </div>
+        {filtersOpen && (
+          <div
+            className="fixed inset-0 z-40 bg-black/40 md:hidden"
+            onClick={() => setFiltersOpen(false)}
+          >
+            <div
+              className="absolute inset-y-0 right-0 w-80 max-w-full overflow-y-auto bg-gray-50 p-4 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="mb-3 flex items-center justify-between">
+                <h2 className="text-sm font-semibold">필터</h2>
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen(false)}
+                  className="rounded border border-gray-300 px-2 py-1 text-xs hover:bg-white"
+                >
+                  ✕
+                </button>
+              </div>
+              <FilterPanel filters={filters} onChange={setFilters} options={options} />
+            </div>
+          </div>
+        )}
 
         <section>
-          <ResultsHeader
-            loading={!problems && !loadError}
-            error={loadError}
-            total={problems?.length ?? 0}
-            shown={results.length}
-            query={query}
-          />
+          <div className="mb-2 hidden items-center justify-between md:flex">
+            <ResultsHeader
+              loading={!problems && !loadError}
+              error={loadError}
+              total={problems?.length ?? 0}
+              shown={results.length}
+              query={query}
+            />
+            <SortBar
+              value={sortMode ?? (query.trim() ? 'relevance' : 'newest')}
+              onChange={setSortMode}
+              disableRelevance={!query.trim()}
+            />
+          </div>
+          <div className="md:hidden">
+            <ResultsHeader
+              loading={!problems && !loadError}
+              error={loadError}
+              total={problems?.length ?? 0}
+              shown={results.length}
+              query={query}
+            />
+          </div>
           <ul className="mt-3 space-y-3">
             {visible.map((r) => (
               <li key={r.problem.id}>
@@ -104,6 +177,11 @@ export default function SearchApp() {
                 더 보기 ({results.length - pageSize}건 남음)
               </button>
             </div>
+          )}
+          {!loadError && problems && results.length === 0 && (
+            <p className="mt-6 rounded border border-dashed border-gray-300 bg-white p-6 text-center text-sm text-gray-500">
+              검색 결과가 없습니다. 검색어 또는 필터를 조정해 보세요.
+            </p>
           )}
           {results.length === RESULT_LIMIT && (
             <p className="mt-3 text-xs text-gray-500">
@@ -190,6 +268,7 @@ function extractOptions(problems: Problem[]) {
 interface UrlState {
   query: string;
   filters: FilterState;
+  sort?: SortMode;
 }
 
 function parseUrlState(): UrlState {
@@ -209,10 +288,15 @@ function parseUrlState(): UrlState {
   setFromCsv('type', filters.sourceTypes);
   setFromCsv('academy', filters.academies);
   setFromCsv('session', filters.sessions);
-  return { query: sp.get('q') ?? '', filters };
+
+  const rawSort = sp.get('sort');
+  const sort: SortMode | undefined =
+    rawSort === 'relevance' || rawSort === 'newest' || rawSort === 'oldest' ? rawSort : undefined;
+
+  return { query: sp.get('q') ?? '', filters, sort };
 }
 
-function writeUrlState(query: string, filters: FilterState) {
+function writeUrlState(query: string, filters: FilterState, sort: SortMode | undefined) {
   if (typeof window === 'undefined') return;
   const sp = new URLSearchParams();
   if (query.trim()) sp.set('q', query.trim());
@@ -220,6 +304,7 @@ function writeUrlState(query: string, filters: FilterState) {
   if (filters.sourceTypes.size) sp.set('type', [...filters.sourceTypes].join(','));
   if (filters.academies.size) sp.set('academy', [...filters.academies].join(','));
   if (filters.sessions.size) sp.set('session', [...filters.sessions].join(','));
+  if (sort) sp.set('sort', sort);
   const qs = sp.toString();
   const newUrl = qs ? `${window.location.pathname}?${qs}` : window.location.pathname;
   window.history.replaceState(null, '', newUrl);
