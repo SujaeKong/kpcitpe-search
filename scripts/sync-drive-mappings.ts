@@ -160,46 +160,108 @@ function parseMoui(name: string): { round: string; session: string } | null {
   return null;
 }
 
+type Cert = '정보관리' | '컴시응' | '공통';
+
+/** 텍스트(파일명 또는 일부)에서 종목 키워드 추출 — `.includes()`로 한글 매칭 안정성 우선 */
+function inferCert(text: string): Cert | null {
+  // 긴 키워드 우선
+  if (text.includes('컴퓨터시스템응용')) return '컴시응';
+  if (text.includes('시스템응용')) return '컴시응';
+  if (text.includes('조직응용')) return '컴시응';
+  if (text.includes('컴시응')) return '컴시응';
+  if (text.includes('정보관리')) return '정보관리';
+  if (text.includes('공통')) return '공통';
+  // fallback: 단어경계 짧은 키워드
+  if (/(?:^|[\s_\-])응용(?:$|[\s_\-.])/.test(text)) return '컴시응';
+  if (/(?:^|[\s_\-])관리(?:$|[\s_\-.])/.test(text)) return '정보관리';
+  return null;
+}
+
 /**
  * 기출 파일명 → (session, certScope).
  *
- * 변형이 매우 다양하므로 키워드 기반 일반 매처 사용:
- *  - 교시: 파일명 어디든 `N교시` (모자라면 `N`다음 공백/구분자) 추출
- *  - 종목: 긴 키워드 우선 (컴퓨터시스템응용 > 정보관리 > 공통),
- *          없으면 단어경계로 짧은 키워드 (응용 / 관리)
- *
- * 무시 패턴: 통합본, 기출분석, 동기회 등.
+ * 매우 다양한 변형을 처리하기 위해 명시적 패턴들을 우선 매칭하고, 마지막에 일반 매처로 fallback.
+ * 14+ 변형 패턴 cover.
  */
 function parseKichul(name: string): {
   session: string;
-  certScope: '정보관리' | '컴시응' | '공통';
+  certScope: Cert;
   isBowan: boolean;
 } | null {
-  // 종목·교시 단위가 아닌 통합본·분석본은 무시
-  if (/_기출풀이\(\d+\)\.pdf$/.test(name)) return null;
-  if (/^\d+\.\s+기출분석/.test(name)) return null;
-  if (name.includes('동기회')) return null;
+  // ===== 무시 패턴 =====
+  if (/_기출풀이\(\d+\)\.pdf$/.test(name)) return null;     // 종목 통합본 (의식적 카운트)
+  if (/^\d+\.\s+기출분석/.test(name)) return null;          // 기출분석 시리즈
+  if (name.includes('동기회')) return null;                  // 동기회 통합본
+  if (/\s통합\.pdf$/.test(name)) return null;                // "회차 종목 통합.pdf"
+  if (/통합본\.pdf$/.test(name) && !/교시/.test(name)) return null; // 교시 정보 없는 통합본
 
+  const isBowan = /보완/.test(name);
+
+  // ===== 명시적 패턴 (우선) =====
+
+  // 패턴 A: [종목_N교시] 또는 [종목-N교시] prefix
+  //  - "[컴퓨터시스템응용_1교시]제101회..." / "[정보관리-2교시]제101회..." / "[조직응용-1교시]..."
+  let m = name.match(/\[([^[\]]+?)[\s_\-](\d+)교시\]/);
+  if (m) {
+    const cert = inferCert(m[1]);
+    if (cert) return { session: m[2], certScope: cert, isBowan };
+  }
+
+  // 패턴 B: "회차_기출풀이_N교시_종목.pdf" — 124, 127
+  m = name.match(/_기출풀이_(\d+)교시_(\S+?)\.pdf$/);
+  if (m) {
+    const cert = inferCert(m[2]);
+    if (cert) return { session: m[1], certScope: cert, isBowan };
+  }
+
+  // 패턴 C: "_기출문제풀이_종목-N교시" — 121
+  m = name.match(/_기출문제풀이_(\S+?)-(\d+)교시/);
+  if (m) {
+    const cert = inferCert(m[1]);
+    if (cert) return { session: m[2], certScope: cert, isBowan };
+  }
+
+  // 패턴 D: "_해설집_종목_N교시" — 96
+  m = name.match(/_해설집_(\S+?)_(\d+)교시/);
+  if (m) {
+    const cert = inferCert(m[1]);
+    if (cert) return { session: m[2], certScope: cert, isBowan };
+  }
+
+  // 패턴 E: "회차 종목 기출해설지 N교시" — 122
+  m = name.match(/\d+회\s+(\S+?)\s+기출해설지\s+(\d+)교시/);
+  if (m) {
+    const cert = inferCert(m[1]);
+    if (cert) return { session: m[2], certScope: cert, isBowan };
+  }
+
+  // 패턴 F: "해설지 종목 N교시" — 125, 126
+  m = name.match(/^해설지\s+(\S+?)\s+(\d+)교시/);
+  if (m) {
+    const cert = inferCert(m[1]);
+    if (cert) return { session: m[2], certScope: cert, isBowan };
+  }
+
+  // 패턴 G: "회차회-종목 ...-N교시" — 87
+  m = name.match(/^\d+회-(\S+?)\s.*-(\d+)교시/);
+  if (m) {
+    const cert = inferCert(m[1]);
+    if (cert) return { session: m[2], certScope: cert, isBowan };
+  }
+
+  // 패턴 H: "관리_NN_S_q_해설지" — 131 (문항 단위 PDF, 첫 발견 키만 사용)
+  m = name.match(/^(\S+?)_\d+_(\d+)_\d+/);
+  if (m) {
+    const cert = inferCert(m[1]);
+    if (cert) return { session: m[2], certScope: cert, isBowan };
+  }
+
+  // ===== 일반 매처 (fallback) =====
   const sessionMatch = name.match(/(\d+)\s*교시/);
   if (!sessionMatch) return null;
-  const session = sessionMatch[1];
-
-  let cert: '정보관리' | '컴시응' | '공통' | null = null;
-  // 긴 키워드 우선 검사
-  if (/컴퓨터시스템응용|시스템응용|컴시응|조직응용/.test(name)) cert = '컴시응';
-  else if (/정보관리/.test(name)) cert = '정보관리';
-  else if (/공통/.test(name)) cert = '공통';
-  // fallback: 단어경계가 있는 짧은 키워드 (관리/응용)
-  else if (/(?:^|[\s_\-])응용(?:$|[\s_\-.])/.test(name)) cert = '컴시응';
-  else if (/(?:^|[\s_\-])관리(?:$|[\s_\-.])/.test(name)) cert = '정보관리';
-
+  const cert = inferCert(name);
   if (!cert) return null;
-
-  return {
-    session,
-    certScope: cert,
-    isBowan: /보완/.test(name),
-  };
+  return { session: sessionMatch[1], certScope: cert, isBowan };
 }
 
 // ===== 폴더명에서 round 추출 =====
