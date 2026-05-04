@@ -45,7 +45,8 @@ function makeDriveClient(): drive_v3.Drive {
   const creds = loadCredentials();
   const auth = new google.auth.GoogleAuth({
     credentials: creds as any,
-    scopes: ['https://www.googleapis.com/auth/drive.readonly'],
+    // 'drive' = read + write. PDF에 copyRequiresWriterPermission 설정에 필요.
+    scopes: ['https://www.googleapis.com/auth/drive'],
   });
   return google.drive({ version: 'v3', auth });
 }
@@ -56,6 +57,7 @@ interface DriveFile {
   id: string;
   name: string;
   mimeType: string;
+  copyRequiresWriterPermission?: boolean;
 }
 
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
@@ -67,19 +69,50 @@ async function listChildren(drive: drive_v3.Drive, folderId: string): Promise<Dr
   do {
     const res = await drive.files.list({
       q: `'${folderId}' in parents and trashed = false`,
-      fields: 'nextPageToken, files(id, name, mimeType)',
+      fields: 'nextPageToken, files(id, name, mimeType, copyRequiresWriterPermission)',
       pageSize: 1000,
       pageToken,
     });
     for (const f of res.data.files ?? []) {
       if (f.id && f.name && f.mimeType) {
         // macOS에서 만든 한글 폴더명이 NFD(자모 분리)로 저장되어 있을 수 있어 NFC로 정규화
-        out.push({ id: f.id, name: f.name.normalize('NFC').trim(), mimeType: f.mimeType });
+        out.push({
+          id: f.id,
+          name: f.name.normalize('NFC').trim(),
+          mimeType: f.mimeType,
+          copyRequiresWriterPermission: f.copyRequiresWriterPermission ?? false,
+        });
       }
     }
     pageToken = res.data.nextPageToken ?? undefined;
   } while (pageToken);
   return out;
+}
+
+/**
+ * PDF 파일에 다운로드/인쇄/복사 차단 설정 적용 (소유자 외 viewer는 다운로드 불가).
+ * 이미 true면 skip (idempotent).
+ *
+ * @returns lock 적용된 파일 수
+ */
+async function lockPdfsIfNeeded(
+  drive: drive_v3.Drive,
+  pdfs: DriveFile[],
+): Promise<number> {
+  let locked = 0;
+  for (const f of pdfs) {
+    if (f.copyRequiresWriterPermission) continue; // 이미 잠김
+    try {
+      await drive.files.update({
+        fileId: f.id,
+        requestBody: { copyRequiresWriterPermission: true },
+      });
+      locked++;
+    } catch (err) {
+      console.warn(`  ⚠ lock 실패: ${f.name} (${(err as Error).message})`);
+    }
+  }
+  return locked;
 }
 
 /**
@@ -314,6 +347,7 @@ interface SyncStats {
   모의_매핑: number;
   스킵된_폴더: number;
   파싱_실패_파일: number;
+  lock_적용: number;
 }
 
 async function syncMappings(): Promise<{ map: MappingResult; stats: SyncStats }> {
@@ -328,6 +362,7 @@ async function syncMappings(): Promise<{ map: MappingResult; stats: SyncStats }>
     모의_매핑: 0,
     스킵된_폴더: 0,
     파싱_실패_파일: 0,
+    lock_적용: 0,
   };
 
   console.log('▶ Drive 루트 폴더 자식 조회');
@@ -348,6 +383,9 @@ async function syncMappings(): Promise<{ map: MappingResult; stats: SyncStats }>
 
       // 회차 폴더 안 PDF 수집 (자식 폴더 1단계까지 추적)
       const pdfs = await collectPdfs(drive, rf.id, 2);
+
+      // 다운로드/인쇄/복사 차단 (idempotent — 이미 적용된 파일은 skip)
+      stats.lock_적용 += await lockPdfsIfNeeded(drive, pdfs);
 
       if (category === '기출') {
         const round = extractKichulRoundFromFolderName(rf.name);
@@ -442,6 +480,7 @@ async function main() {
   console.log(`  모의  : ${stats.모의_매핑}건`);
   console.log(`  스킵 폴더 (회차 정보 없음): ${stats.스킵된_폴더}`);
   console.log(`  파싱 실패 파일: ${stats.파싱_실패_파일}`);
+  console.log(`  다운로드 차단 신규 적용: ${stats.lock_적용}건`);
   console.log(`\n✔ ${path.relative(ROOT, OUT_FILE)} 갱신`);
 }
 
