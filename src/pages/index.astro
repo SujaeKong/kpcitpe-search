@@ -1,15 +1,49 @@
 ---
+import { Image } from 'astro:assets';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SearchApp from '../components/SearchApp';
+import kpcLogo from '../assets/kpc-logo.png';
 ---
 <BaseLayout title="kpcitpe-search">
-  <main class="mx-auto max-w-6xl px-4 py-6">
-    <header class="mb-5">
-      <h1 class="text-xl font-bold text-gray-900">kpcitpe-search</h1>
-      <p class="mt-1 text-sm text-gray-500">
-        정보관리 / 컴시응 기술사 기출·합숙·모의 통합 검색
-      </p>
+  <main class="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-6">
+    <header class="mb-6 flex items-center gap-3">
+      <Image
+        src={kpcLogo}
+        alt="KPC 기술사회"
+        width={144}
+        height={144}
+        densities={[1, 2, 3]}
+        class="h-12 w-12 shrink-0 rounded-full shadow-sm ring-1 ring-red-100"
+      />
+      <div class="min-w-0">
+        <h1 class="text-xl font-bold text-gray-900">kpcitpe-search</h1>
+        <p class="mt-0.5 text-sm text-gray-500">
+          정보관리 / 컴시응 기술사 기출 · 합숙 · 모의고사 통합 검색
+        </p>
+      </div>
     </header>
-    <SearchApp client:load />
+
+    <div class="flex-1">
+      <SearchApp client:load />
+    </div>
+
+    <footer class="mt-12 border-t border-gray-200 pt-5 pb-3">
+      <div class="flex flex-col items-center gap-1.5 text-xs text-gray-500 sm:flex-row sm:justify-center">
+        <span class="inline-flex items-center gap-1.5">
+          <span>Powered by</span>
+          <Image
+            src={kpcLogo}
+            alt=""
+            width={60}
+            height={60}
+            densities={[1, 2, 3]}
+            class="h-5 w-5 rounded-full"
+          />
+          <span class="font-semibold text-red-600">KPC 기술사회</span>
+        </span>
+        <span class="hidden sm:inline-block sm:px-1.5 sm:text-gray-300">·</span>
+        <span>기출문제 / 합숙 / 모의고사 데이터 출처</span>
+      </div>
+    </footer>
   </main>
 </BaseLayout>
