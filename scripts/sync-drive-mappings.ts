@@ -73,7 +73,8 @@ async function listChildren(drive: drive_v3.Drive, folderId: string): Promise<Dr
     });
     for (const f of res.data.files ?? []) {
       if (f.id && f.name && f.mimeType) {
-        out.push({ id: f.id, name: f.name, mimeType: f.mimeType });
+        // macOS에서 만든 한글 폴더명이 NFD(자모 분리)로 저장되어 있을 수 있어 NFC로 정규화
+        out.push({ id: f.id, name: f.name.normalize('NFC').trim(), mimeType: f.mimeType });
       }
     }
     pageToken = res.data.nextPageToken ?? undefined;
