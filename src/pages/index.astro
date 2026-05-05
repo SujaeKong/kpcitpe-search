@@ -2,6 +2,7 @@
 import { Image } from 'astro:assets';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import SearchApp from '../components/SearchApp';
+import AuthMenu from '../components/AuthMenu';
 import kpcLogo from '../assets/kpc-logo.png';
 ---
 <BaseLayout title="kpcitpe-search">
@@ -27,6 +28,7 @@ import kpcLogo from '../assets/kpc-logo.png';
       >
         📚 회차별
       </a>
+      <AuthMenu client:load />
     </header>
 
     <div class="flex-1">
