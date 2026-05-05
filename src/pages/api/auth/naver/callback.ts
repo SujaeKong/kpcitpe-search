@@ -5,6 +5,7 @@ import {
   setSessionCookieHeader,
   type AppUser,
 } from '../../../../lib/auth';
+import { getDB, upsertUser } from '../../../../lib/db';
 
 export const prerender = false;
 
@@ -71,6 +72,21 @@ export const GET: APIRoute = async ({ locals, request }) => {
     name: profile.response?.name,
     email: profile.response?.email,
   };
+
+  // D1 사용자 upsert (있으면 last_login_at 갱신, 없으면 신규)
+  const db = getDB(locals);
+  if (db) {
+    try {
+      await upsertUser(db, {
+        naverId,
+        email: user.email ?? null,
+        name: user.name ?? null,
+      });
+    } catch (err) {
+      console.error('upsertUser 실패:', err);
+      // DB 오류여도 로그인은 진행 (degraded 모드)
+    }
+  }
 
   // JWT 세션 쿠키 발급
   const jwt = await makeSessionCookieValue(user, env);

@@ -4,6 +4,7 @@ import Badge from './Badge';
 import HighlightedText, { findIndicesForKey } from './HighlightedText';
 import type { SearchResult } from '../lib/search';
 import ExplanationModal from './ExplanationModal';
+import { useAuth } from '../lib/use-auth';
 
 interface Props {
   result: SearchResult;
@@ -14,6 +15,7 @@ const MOBILE_BREAKPOINT = 768; // iOS Safari iframe PDF 호환 이슈로 모바�
 export default function ProblemCard({ result }: Props) {
   const p: Problem = result.problem;
   const [modalOpen, setModalOpen] = useState(false);
+  const { user, loading: authLoading } = useAuth();
   const titleIdx = findIndicesForKey(result.matches, 'title');
   const contentIdx = findIndicesForKey(result.matches, 'content');
   const sessionLabel =
@@ -32,6 +34,16 @@ export default function ProblemCard({ result }: Props) {
 
   const handleOpenExplanation = (e: React.MouseEvent) => {
     e.preventDefault();
+    // 인증 게이트: 로그인 안 한 사용자는 로그인 페이지로
+    if (!authLoading && !user) {
+      const baseUrl = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
+      const returnTo =
+        typeof window !== 'undefined'
+          ? window.location.pathname + window.location.search
+          : '/';
+      window.location.href = `${baseUrl}/api/auth/naver/login?return=${encodeURIComponent(returnTo)}`;
+      return;
+    }
     if (typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT && externalUrl) {
       window.open(externalUrl, '_blank', 'noopener,noreferrer');
     } else {
@@ -76,6 +88,9 @@ export default function ProblemCard({ result }: Props) {
             className="rounded border border-gray-300 px-2.5 py-1 hover:bg-gray-50"
           >
             📖 해설지 보기
+            {!authLoading && !user && (
+              <span className="ml-1 text-xs text-gray-400">(로그인 필요)</span>
+            )}
           </button>
         ) : (
           <span className="text-xs text-gray-400">해설지 준비 중</span>
