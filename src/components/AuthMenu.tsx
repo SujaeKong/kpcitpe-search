@@ -60,6 +60,12 @@ export default function AuthMenu() {
           className="absolute right-0 top-full z-30 mt-1 w-80 rounded-lg border border-gray-200 bg-white p-3 shadow-lg"
           onClick={(e) => e.stopPropagation()}
         >
+          <div className="mb-3 border-b border-gray-100 pb-2">
+            <div className="text-xs font-semibold text-gray-900">{user.name ?? '사용자'}</div>
+            {user.email && (
+              <div className="text-[11px] text-gray-500">{user.email}</div>
+            )}
+          </div>
           <div className="mb-2 rounded-md bg-emerald-50 p-2 text-xs text-emerald-900">
             <div className="font-semibold">✨ 신규 회차 해설지 우선 안내</div>
             <p className="mt-0.5 text-emerald-800">
