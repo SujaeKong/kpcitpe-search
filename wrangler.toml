@@ -3,9 +3,6 @@ compatibility_date = "2025-04-01"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "./dist"
 
-[build]
-command = "echo skip"
-
 # 사용자 정보 + 마케팅 동의 D1 DB
 [[d1_databases]]
 binding = "DB"
