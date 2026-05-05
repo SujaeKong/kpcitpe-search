@@ -1,0 +1,35 @@
+---
+import { Image } from 'astro:assets';
+import BaseLayout from '../layouts/BaseLayout.astro';
+import AdminApp from '../components/AdminApp';
+import kpcLogo from '../assets/kpc-logo.png';
+
+export const prerender = false;
+
+const baseUrl = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+<BaseLayout title="관리자 | kpcitpe-search">
+  <main class="mx-auto flex min-h-screen max-w-6xl flex-col px-4 py-6">
+    <header class="mb-6 flex items-center gap-3">
+      <a href={`${baseUrl}/`} class="shrink-0">
+        <Image
+          src={kpcLogo}
+          alt="KPC 기술사회"
+          width={144}
+          height={144}
+          densities={[1, 2, 3]}
+          class="h-12 w-12 rounded-full shadow-sm ring-1 ring-red-100"
+        />
+      </a>
+      <div class="min-w-0">
+        <a href={`${baseUrl}/`} class="text-xs text-indigo-600 hover:underline">
+          ← 검색으로
+        </a>
+        <h1 class="text-xl font-bold text-gray-900">관리자</h1>
+        <p class="mt-0.5 text-xs text-gray-500">사용자 관리 / CSV 내보내기 / 통계</p>
+      </div>
+    </header>
+
+    <AdminApp client:load />
+  </main>
+</BaseLayout>
