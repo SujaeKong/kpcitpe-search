@@ -1,29 +1,46 @@
 # kpcitpe-search 프로젝트 정리
 
-> 정보관리 / 컴시응 기술사 기출 · 합숙 · 모의고사 통합 검색 정적 사이트
+> 정보관리 / 컴시응 기술사 기출 · 합숙 · 모의고사 통합 검색 + 해설지 열람 사이트
 >
-> https://sujaekong.github.io/kpcitpe-search/
+> **운영 URL**: https://kpcitpe-search.pages.dev
+> **레포**: https://github.com/SujaeKong/kpcitpe-search
+
+---
+
+## 0. 새 세션에서 빠르게 컨텍스트 회복하려면
+
+이 파일을 처음부터 끝까지 읽으면 프로젝트 결정/구조/운영 흐름이 모두 잡힙니다. 휴대폰의 claude.ai 등에서 작업 이어갈 때 이 파일을 첨부하거나 내용을 붙여넣으면 동일 컨텍스트.
+
+데스크탑 Claude Code 환경에서는 추가로 `~/.claude/projects/-Users-sujaekong-kpcitpe-search/memory/` 의 메모리들이 자동 로드됩니다 (로컬 전용).
 
 ---
 
 ## 1. 한 줄 소개
 
-12,158건의 문제를 키워드로 검색하고 → 매핑된 해설지(Drive PDF)를 페이지 안에서 바로 열람.
-KPC 신규 엑셀/PDF 추가 시 자동 빌드 + Drive sync로 사용자 부담 거의 0.
+12,158건의 KPC 통합 엑셀 문제를 키워드로 검색하고, 매핑된 Drive PDF 해설지를 페이지 안에서 바로 열람. KPC가 신규 엑셀/PDF 추가 시 GitHub 업로드 + Drive 업로드만 하면 모든 후속 처리(빌드/매핑/배포) 자동.
+
+운영 정책:
+- 검색은 누구나 가능
+- **해설지 열람은 Naver OAuth 로그인 필수** (인증 게이트)
+- 마케팅 정보 수신은 별도 동의 (정보통신망법 준수, 선택)
 
 ---
 
-## 2. 기술 스택
+## 2. 기술 스택 + 인프라
 
 | 영역 | 선택 | 비고 |
 |---|---|---|
-| 프레임워크 | Astro 4 + React (Islands) | 정적 사이트 + 일부 인터랙션만 React |
-| 스타일 | Tailwind CSS | 액센트 색만 KPC red |
-| 검색 | Fuse.js | 한글 fuzzy, 클라이언트 메모리 |
+| 프레임워크 | Astro 4 + React (Islands) + hybrid 모드 | 정적 + SSR 혼합 |
+| 어댑터 | @astrojs/cloudflare 11.x | Pages Advanced Mode (`_worker.js/`) |
+| 스타일 | Tailwind CSS | KPC red 액센트 |
+| 검색 | Fuse.js | 클라이언트 메모리 검색 |
 | 데이터 변환 | TypeScript + xlsx + tsx | scripts/build.ts |
-| 호스팅 | GitHub Pages | 무료, KST PoP 양호 |
-| 해설지 | Google Drive (`/preview` iframe) | API로 자동 매핑 + lock |
-| 자동화 | GitHub Actions | build-and-deploy + sync-drive |
+| 호스팅 | **Cloudflare Pages** (`kpcitpe-search.pages.dev`) | GitHub Pages는 비활성화 (2026-05-05) |
+| 백엔드 | Cloudflare Workers (Pages Functions) | OAuth callback, /api/me, /api/admin/* |
+| DB | Cloudflare D1 (`kpcitpe-users`) | id `e4db547e-fb9f-4a42-a095-e259912bc429` |
+| 인증 | Naver OAuth + JWT (HMAC-SHA256, Web Crypto) | 7일 세션 쿠키 |
+| 해설지 | Google Drive (`/preview` iframe) | API로 자동 매핑, lock은 owner-only라 미적용 |
+| 자동화 | GitHub Actions | deploy-cloudflare + sync-drive + rename-hapsuk |
 
 ---
 
@@ -34,7 +51,7 @@ kpcitpe-search/
 ├── data/
 │   ├── source/kpc/             KPC 통합 엑셀 (사용자 업로드)
 │   ├── mappings/
-│   │   └── explanation-files.json   해설지 Drive ID 매핑 (자동 생성)
+│   │   └── explanation-files.json   해설지 Drive ID 매핑 (자동)
 │   ├── problems.json           CI에서 자동 생성 (.gitignore)
 │   └── stats.json
 ├── public/
@@ -46,130 +63,176 @@ kpcitpe-search/
 │   │   ├── kpc-xls-adapter.ts    엑셀 → Problem[] 변환
 │   │   └── types.ts
 │   ├── build.ts                  변환 파이프라인
-│   ├── sync-drive-mappings.ts    Drive 매핑 + lock 자동화
-│   └── debug-quality.ts          1회성 디버그
+│   ├── sync-drive-mappings.ts    Drive 매핑 자동화
+│   ├── rename-old-hapsuk.ts      합숙 옛 회차 폴더명 변경 (1회성)
+│   └── debug-quality.ts
 ├── src/
-│   ├── components/             검색 UI (React + Astro)
-│   ├── layouts/
-│   ├── lib/                    search.ts, data-loader.ts, types.ts
+│   ├── components/             검색 + 인증 + admin UI
+│   ├── layouts/BaseLayout.astro
+│   ├── lib/
+│   │   ├── search.ts           Fuse 래퍼 + 필터/정렬
+│   │   ├── search-history.ts   localStorage 검색 히스토리
+│   │   ├── data-loader.ts      problems.json fetch + sessionStorage 캐시
+│   │   ├── jwt.ts              Web Crypto JWT
+│   │   ├── auth.ts             세션 쿠키 헬퍼
+│   │   ├── db.ts               D1 사용자 DB 헬퍼 (자동 schema)
+│   │   ├── admin.ts            ADMIN_EMAILS 화이트리스트
+│   │   ├── use-auth.ts         React useAuth hook (모듈 캐시)
+│   │   └── types.ts
 │   └── pages/
-│       ├── index.astro                      메인 검색
-│       └── rounds/
-│           ├── index.astro                   회차 목차
-│           └── [sourceType]/[round].astro   회차별 페이지
+│       ├── index.astro                    메인 검색
+│       ├── admin.astro                    관리자 페이지
+│       ├── rounds/index.astro             회차 목차
+│       ├── rounds/[sourceType]/[round].astro   회차별
+│       └── api/
+│           ├── me.ts                       세션 사용자 정보
+│           ├── consent.ts                  마케팅 동의 토글
+│           ├── auth/naver/login.ts
+│           ├── auth/naver/callback.ts
+│           ├── auth/logout.ts
+│           ├── admin/users.ts              사용자 list (admin)
+│           └── admin/users.csv.ts          CSV 다운로드 (admin)
 ├── .github/workflows/
-│   ├── build-and-deploy.yml    엑셀 push → 빌드 → 배포
-│   └── sync-drive.yml          매일 KST 03:00 + 수동 trigger
-└── PROJECT.md (이 문서)
+│   ├── deploy-cloudflare.yml   엑셀 push → 빌드 → Cloudflare 배포
+│   ├── sync-drive.yml          매일 KST 03:00 + 수동
+│   └── rename-hapsuk.yml       1회성 (이미 실행 완료)
+├── wrangler.toml
+├── astro.config.mjs            SITE/BASE 환경변수 의존
+├── PROJECT.md (이 문서)
+├── requirements.md             초기 요구사항 (참고용)
+└── README.md
 ```
 
 ---
 
-## 4. 데이터 흐름
+## 4. 환경변수 / Secrets 정리
+
+### Cloudflare Pages env_vars (production)
+- `NAVER_CLIENT_ID` — Naver OAuth client_id
+- `NAVER_CLIENT_SECRET` — Naver OAuth secret
+- `JWT_SECRET` — JWT 서명 키 (32 bytes hex)
+- `PUBLIC_SITE_URL` — `https://kpcitpe-search.pages.dev`
+- `ADMIN_EMAILS` — 콤마구분 admin 이메일 (`ksujae22@naver.com`)
+- (D1 `DB`는 wrangler.toml binding으로 주입)
+
+### GitHub Secrets
+- `CLOUDFLARE_API_TOKEN` — Cloudflare 배포용
+- `CLOUDFLARE_ACCOUNT_ID` — `f20bfdcf3a187412a74b852b36ad4240`
+- `GOOGLE_SERVICE_ACCOUNT_JSON` — Drive sync용
+- `DRIVE_ROOT_FOLDER_ID` — `1gKPEW_eVdR086KXwPDZIeUfPvlQp9-rV`
+
+---
+
+## 5. 데이터 흐름
 
 ```
-[사용자]
-  ├─ KPC 엑셀 → GitHub data/source/kpc/ (1~2분/회차)
-  └─ Drive PDF → 01. 기출문제 & 모의고사/* (1~2분/회차)
-                                ↓
-                ┌───────────────┴───────────────┐
-                ↓                                ↓
-[엑셀 push 시]                          [매일 03:00 또는 수동 trigger]
-  build-and-deploy.yml                    sync-drive.yml
-    ↓                                       ↓
-    npm run build                           ① Drive 트리 BFS
-      = build:data + astro build              ② 파일명 정규식 파싱
-    ↓                                       ③ explanation-files.json 갱신
-    dist/                                   ④ PDF에 copyRequiresWriterPermission=true
-    ↓                                       ⑤ 변경 시 commit & build-and-deploy 트리거
-    GitHub Pages 배포
-                                            ↓
-                                          [사이트 갱신, 자동]
+[엑셀 업로드]                       [Drive PDF 업로드]
+   GitHub data/source/kpc/             01. 기출문제 & 모의고사/*
+   ↓ push                              ↓
+deploy-cloudflare.yml                sync-drive.yml (매일 03:00 + 수동)
+   ↓                                   ↓
+   npm run build                       Drive 트리 BFS → 파일명 정규식 파싱
+     = build:data + astro build        ↓
+   ↓                                   explanation-files.json 갱신
+   wrangler pages deploy dist          ↓
+   ↓                                   변경 시 commit → deploy-cloudflare 트리거
+[Cloudflare Pages 갱신]              ↓
+                                    [Cloudflare Pages 갱신]
+```
+
+런타임:
+```
+사용자 → 검색바 입력
+   ↓ debounce 200ms
+[클라이언트 Fuse.js 검색 — problems.json 메모리]
+   ↓
+결과 카드 표시
+   ↓ "📖 해설지 보기" 클릭
+[useAuth() 체크]
+   ├─ 미로그인 → /api/auth/naver/login 으로 redirect
+   └─ 로그인 → ExplanationModal 열기 (iframe /preview)
 ```
 
 ---
 
-## 5. 운영 매뉴얼
+## 6. 운영 매뉴얼
 
-### 5.1 신규 회차 추가 (가장 흔한 케이스)
+### 6.1 신규 회차 추가 (가장 흔한 케이스)
 
 **A. 해설지 PDF (Drive)**
-1. https://drive.google.com → `01. 기출문제 & 모의고사/{카테고리}` 진입
+1. Drive `01. 기출문제 & 모의고사/{카테고리}` 진입
 2. 신규 회차 폴더 생성 (예: `제139회 기출문제 해설집`, `139회 (2026-05)`, `제130회(26년07월)KPC기술사 모의고사 해설집`)
-3. 폴더 안에 PDF 드래그 업로드
-4. **끝** — 다음 KST 03:00 자동 sync에서 매핑 + 다운로드 차단(lock) 자동 처리
+3. 폴더 안에 PDF 드래그
+4. **끝** — 다음 KST 03:00 자동 sync에서 매핑 (Actions 탭 수동 trigger 가능)
 
-**즉시 반영하려면**: GitHub 레포 → **Actions** 탭 → **Sync Drive Mappings** → **Run workflow** 클릭.
-
-**B. 통합 엑셀 (검색 데이터)**
-
-**옵션 1 — GitHub 웹 (CLI 없이)**
-1. https://github.com/SujaeKong/kpcitpe-search → `data/source/kpc/` 진입
+**B. 통합 엑셀 (검색 데이터)** — GitHub 웹에서:
+1. https://github.com/SujaeKong/kpcitpe-search → `data/source/kpc/`
 2. **Add file → Upload files** → 새 엑셀 드래그
-3. (옵션) 옛 파일 클릭 → 휴지통 (같은 commit에 묶임)
-4. 하단 commit 메시지 한 줄 (예: `data: KPC v260712`)
-5. **Commit changes** 클릭 → 1~2분 후 자동 빌드/배포
+3. (옵션) 옛 파일 휴지통
+4. commit 메시지 한 줄 (예: `data: KPC v260712`)
+5. Commit changes → 1~2분 후 자동 배포
 
-**옵션 2 — 터미널**
+### 6.2 관리자 페이지 사용
+- https://kpcitpe-search.pages.dev/admin
+- `ksujae22@naver.com` 계정 로그인 시만 접근
+- 사용자 통계 / CSV 다운로드 (전체 / 동의자만)
+
+### 6.3 신규 admin 추가
+Cloudflare 대시보드 → Pages → kpcitpe-search → Settings → Environment variables → `ADMIN_EMAILS` 값에 콤마로 추가 → 재배포.
+
+또는 API:
 ```bash
-cd /Users/sujaekong/kpcitpe-search
-git pull
-cp ~/Downloads/KPC_..._v260712.xls data/source/kpc/
-rm data/source/kpc/KPC_..._v260411.xls   # 옛 파일 정리
-git add data/source/kpc/
-git commit -m "data: KPC 엑셀 v260712"
-git push
+curl -X PATCH "https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/pages/projects/kpcitpe-search" \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{"deployment_configs":{"production":{"env_vars":{"ADMIN_EMAILS":{"value":"a@x.com,b@y.com","type":"secret_text"}}}}}'
 ```
 
-### 5.2 트러블슈팅
+### 6.4 트러블슈팅
 
 | 증상 | 원인 | 해결 |
 |---|---|---|
-| 검색 결과 없음 | 클라이언트 sessionStorage 옛 캐시 | `Cmd+Shift+R` 강제 새로고침 또는 시크릿 창 |
-| "해설지 준비 중"인데 매핑은 됐을 거 같음 | 위와 동일 (캐시) | 위와 동일 |
-| 매핑 누락 (특정 회차) | 새 파일명 변형이 매처에서 미매칭 | Actions log 확인 → `parseKichul`/`parseMoui`/`parseHapsuk` 패턴 추가 |
-| sync workflow 실패 (push rejected) | 수동 push와 자동 commit 충돌 | 워크플로우에 `pull --rebase` 자동 retry 적용됨, 다음 sync에서 회복 |
-| iframe PDF 로드 실패 | Drive 공유 권한 미설정 | 폴더 공유 → 일반 액세스 → 링크 있는 모든 사용자 |
-| 다운로드 차단 안 됨 | SA가 뷰어 권한 (편집자 아님) | Drive 폴더 공유 → SA 권한 → 편집자로 변경 |
-| 잘못된 데이터 commit | 실수 | GitHub 웹 → Commits → Revert 또는 파일 history → Restore |
+| 검색 결과 없음 | 클라이언트 sessionStorage 캐시 | `Cmd+Shift+R` |
+| "해설지 준비 중"인데 매핑 됐을 거 같음 | 캐시 또는 매핑 mismatch | data-loader.ts CACHE_KEY/VERSION bump |
+| 매핑 누락 (특정 회차) | 새 파일명 변형 미매칭 | sync log 확인 → parseKichul/Moui/Hapsuk 패턴 추가 |
+| sync workflow 실패 (push rejected) | 자동 commit + 수동 push 충돌 | 자동 `pull --rebase` retry 설정됨 |
+| iframe PDF 로드 실패 | Drive 공유 권한 미설정 | 폴더 → 일반 액세스 → "링크 있는 모든 사용자" |
+| OAuth redirect 실패 | NAVER_CLIENT_ID/CALLBACK URL 불일치 | Naver Developers 콘솔 콜백 URL = `https://kpcitpe-search.pages.dev/api/auth/naver/callback` |
+| `/admin` "권한 없음" | ADMIN_EMAILS 미등록 또는 다른 계정 로그인 | env_var 확인, 로그아웃 후 admin 계정으로 재로그인 |
+| GitHub Pages 404 | 의도된 비활성화 (2026-05-05) | Cloudflare Pages URL 사용 |
 
-### 5.3 캐시 무효화
+### 6.5 D1 직접 쿼리 (디버깅)
+Cloudflare 대시보드 → D1 → `kpcitpe-users` → Console:
+```sql
+SELECT * FROM users ORDER BY joined_at DESC LIMIT 10;
+SELECT COUNT(*) FROM users WHERE marketing_consent = 1;
+```
 
-데이터 모델/매핑 큰 변경 시 클라이언트 강제 새 fetch 필요:
-- `src/lib/data-loader.ts` 의 `CACHE_KEY` 와 `VERSION` 둘 다 bump (`v3` → `v4` 등)
-- 다음 배포 후 모든 사용자 자동 새 fetch
-
-### 5.4 보안 모델
-
-- **GitHub 레포**: public 읽기, 본인만 쓰기. 외부인은 fork/PR만 가능.
-- **계정 보안**: GitHub 2FA 활성화 권장.
-- **실수 복원**: git history 영구 보존 (force push 안 함).
-- **Drive PDF**:
-  - "링크가 있는 모든 사용자 - 뷰어"로 공유
-  - SA(`kpc-drive-bot@kpcitpe-search.iam.gserviceaccount.com`)는 **편집자** 권한 (lock 설정용)
-  - 모든 PDF에 `copyRequiresWriterPermission: true` 적용 → viewer는 다운로드/인쇄/복사 불가
-  - 사이트는 `/preview` URL로만 노출 (Drive UI 가림)
+또는 wrangler:
+```bash
+wrangler d1 execute kpcitpe-users --command "SELECT * FROM users LIMIT 5" --remote
+```
 
 ---
 
-## 6. 데이터 모델
+## 7. 데이터 모델
 
-### 6.1 Problem 스키마
+### 7.1 Problem 스키마 (problems.json)
 
-```typescript
+```ts
 {
   id: string;                            // 'kichul-138-mgmt-1-3' 등
   sourceType: '기출' | '합숙' | '모의' | '자체';
   academy: 'KPC' | 'ITPE' | null;       // 기출만 null
   certScope: '정보관리' | '컴시응' | '공통';
-  round: string;                         // '138' | '2026.04' | '2026.02'
-  roundLabel: string;                    // '138회' | '모의_2026.04'
-  roundOrder: number;                    // 정렬용
+  round: string;                         // '138' | '2026.04'
+  roundLabel: string;
+  roundOrder: number;
   session: string;                       // '1' | '1일차'
   sessionType: '교시' | '일차';
-  sessionPart?: '1교시' | '2교시' | null; // 합숙만
+  sessionPart?: '1교시' | '2교시' | null; // 합숙
   questionNumber: number | null;
-  questionSubNumber: number | null;      // '1.2' 형태 소문제
+  questionSubNumber: number | null;
   questionLabel: string;
   title: string;
   content: string;
@@ -180,7 +243,7 @@ git push
 }
 ```
 
-### 6.2 explanation-files.json 매핑 키
+### 7.2 explanation-files.json 매핑 키
 
 ```
 기출:  {round}.{session}_{certScope}     예: '138' → '1_정보관리'
@@ -188,146 +251,214 @@ git push
 모의:  {academy}.{round}.{session}        예: 'KPC' → '2026.04' → '1'
 ```
 
-### 6.3 데이터 정규화 규칙 (보강 적용)
+### 7.3 D1 users 테이블
 
-- **회차**: `'138', '138회'` → `'138'`. 모의/합숙 `'모의_2010.10-1'` (월 2회) 지원.
+```sql
+CREATE TABLE users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  naver_id TEXT UNIQUE NOT NULL,
+  email TEXT,
+  name TEXT,
+  joined_at INTEGER NOT NULL,
+  last_login_at INTEGER NOT NULL,
+  marketing_consent INTEGER NOT NULL DEFAULT 0,
+  marketing_consent_at INTEGER
+);
+```
+
+### 7.4 데이터 정규화 규칙 (보강 적용)
+
+- **회차**: `'138', '138회'` → `'138'`. `'모의_2010.10-1'` (월 2회) 지원.
 - **종목**: 6가지 표기 → 3종 (`정보관리`, `컴시응`, `공통`).
 - **합숙 일차**: `Day-1`, `1일차`, `1` → `1일차`로 통일.
-- **소문제**: `1.1`, `1-2` 형태 → `questionNumber=1, questionSubNumber=2`.
-- **옛 회차 단답형**: questionNumber=null → `(회차, 종목, 교시)` 그룹 내 자동 순번 부여.
-- **합숙 sessionPart**: 그룹 사이즈 + 같은 번호 두 번째 등장 휴리스틱으로 1교시/2교시 분리.
+- **소문제**: `1.1`, `1-2` 형태 → `questionSubNumber` 분리.
+- **옛 회차 단답형 questionNumber=null**: 그룹 내 자동 순번.
+- **합숙 sessionPart**: 그룹 사이즈 + 같은 번호 두 번째 등장 휴리스틱.
+- **합숙 옛 회차 폴더명**: `093회합숙(2011-02)` 등 (YYYY-MM) 추가됨.
 
 ---
 
-## 7. GitHub Actions 워크플로우
-
-### 7.1 build-and-deploy.yml
-- **트리거**: main push / 수동
-- **단계**: setup-pages → npm ci → npm run build (data + site) → upload-pages-artifact → deploy-pages
-- **소요**: ~50초
-
-### 7.2 sync-drive.yml
-- **트리거**: 매일 KST 03:00 / 수동
-- **단계**: Drive sync (매핑 + lock) → 변경 시 commit (`pull --rebase` 자동 retry) → build-and-deploy 트리거
-- **소요**: 통상 1~3분, 첫 lock 적용 시 15~20분
-
-### 7.3 GitHub Secrets (등록 완료)
-- `GOOGLE_SERVICE_ACCOUNT_JSON`: Drive API 인증
-- `DRIVE_ROOT_FOLDER_ID`: `1gKPEW_eVdR086KXwPDZIeUfPvlQp9-rV`
-
----
-
-## 8. 신규 패턴 등장 시 매처 보강 가이드
-
-새 회차의 PDF 파일명이 기존 패턴에 안 맞으면 sync log에서 매칭 0건으로 보고됨.
+## 8. 매핑 커버리지 (현재)
 
 ```
+기출   : 279건 매핑 (회차 기반, 47회차 중 ~30+회차)
+합숙   : 216건 (옛 회차 매핑 후 +30)
+모의   : 400건 (새 패턴 추가 후 +20)
+─────────────
+총 895건 매핑 / 12,158건 전체
+```
+
+매처 위치: `scripts/sync-drive-mappings.ts` 의 `parseKichul` / `parseHapsuk` / `parseMoui`.
+
+신규 패턴 등장 시 sync log에 미매칭 폴더 샘플이 출력됨:
+```bash
 gh run view <RUN_ID> --log | grep '매칭 0/'
 ```
 
-→ 어느 폴더의 어떤 파일명인지 확인 후 정규식 추가:
+---
 
-| 카테고리 | 함수 | 위치 |
-|---|---|---|
-| 기출 | `parseKichul` | scripts/sync-drive-mappings.ts |
-| 합숙 | `parseHapsuk` | 동일 |
-| 모의 | `parseMoui` | 동일 |
+## 9. GitHub Actions 워크플로우
 
-수정 → push → sync 자동 재실행 (다음 03:00) 또는 수동 trigger.
+### 9.1 deploy-cloudflare.yml
+- **트리거**: main push / 수동
+- **동작**: setup-pages → npm ci → npm run build → wrangler pages deploy
+- **소요**: 1~2분
+
+### 9.2 sync-drive.yml
+- **트리거**: 매일 KST 03:00 / 수동
+- **동작**: Drive sync (매핑) → 변경 시 commit (pull --rebase 자동 retry) → deploy-cloudflare 트리거
+- **소요**: 1~3분
+
+### 9.3 rename-hapsuk.yml (1회성)
+- 합숙 옛 회차 폴더명에 (YYYY-MM) 추가하는 1회성 스크립트. 이미 실행 완료. 향후 필요 시 재사용.
 
 ---
 
-## 9. 개발 변경 이력 (오늘 작업)
+## 10. 변경 이력 (전체 작업)
 
-### Phase 1: 변환 파이프라인
-- KpcXlsAdapter: 3시트 통합, 회차/종목/교시 정규화, 소문제 분리, 옛 회차 단답형 자동 순번
-- 합숙 sessionPart 휴리스틱 (1교시/2교시 자동 분류)
+### Phase 1: 데이터 변환 (Day 1)
+- KpcXlsAdapter: 3시트 통합, 정규화, 소문제 분리, 옛 회차 자동 순번
+- 합숙 sessionPart 휴리스틱
 - 12,158건 정확 변환
 
-### Phase 2: 검색 UI
+### Phase 2: 검색 UI (Day 2)
 - Astro + React Islands + Fuse.js + Tailwind
-- 검색바(debounce 200ms) + 필터 패널(다중 칩)
-- 정렬 옵션 (관련도/최신/오래된)
+- 검색바(debounce) + 필터(다중 칩) + 정렬 + 회차 슬라이더
 - 모바일 필터 drawer
-- 회차 범위 dropdown
-- URL 동기화 (`?q=`, `?cert=`, `?type=`, `?session=`, `?rmin=`, `?rmax=`, `?sort=`)
+- 검색 히스토리 (localStorage)
+- URL 동기화
 - 검색어 하이라이팅
-- 결과 0건 안내 카드
 
-### Phase 3: 해설지
-- iframe 임베드 모달 (ESC, 백드롭, 모바일 새 탭 fallback, 5초 타임아웃 fallback UI)
-- Drive sync 자동화 — Service Account, 매일 03:00 cron + 수동 trigger
-- 매핑 패턴: 기출 8가지 변형 + 모의 5가지 + 합숙 1가지
-- 다운로드/인쇄/복사 차단 (`copyRequiresWriterPermission` 자동 적용)
-- 다운로드 버튼 UI 제거 (보기 전용)
+### Phase 3: 해설지 (Day 2~3)
+- iframe 임베드 모달 (ESC, 백드롭, 모바일 새 탭, 5초 fallback)
+- Drive sync 자동화 (Service Account, 매일 03:00)
+- 매핑 패턴: 기출 8가지 + 모의 5가지 + 합숙 1가지
+- 합숙 옛 회차 폴더 자동 이름 변경 (1회성)
+- 다운로드 차단 시도 → 개인 Drive owner-only 제약으로 페이지 측 차단(/preview + 버튼 제거)으로 대응
+
+### 부가 기능
+- 회차별 브라우징 (`/rounds/`, `/rounds/[sourceType]/[round]`) — 동적 라우트, 203 페이지
+- KPC 로고 헤더/푸터/favicon (astro:assets)
+- og/twitter 메타, robots.txt
+- ID 규칙 보강 (cert/academy 슬러그)
+
+### Cloudflare 마이그레이션 (Day 3)
+- GitHub Pages → Cloudflare Pages
+- @astrojs/cloudflare adapter (hybrid 모드)
+- wrangler.toml + GitHub Actions 자동 배포
+- GitHub Pages 비활성화
+
+### Phase A: 인증 (Day 3)
+- A1: Cloudflare 마이그레이션
+- A2: Naver OAuth + Web Crypto JWT (외부 라이브러리 0)
+- A3: D1 사용자 DB + 마케팅 동의 (정보통신망법 준수) + 해설지 인증 게이트
+- 동의 패널 인센티브 강조 ("신규 회차 해설지 우선 안내")
+
+### Admin 페이지 (Day 3)
+- /admin 사용자 관리 (통계 + 테이블 + CSV)
+- ADMIN_EMAILS 화이트리스트
+- 미인증/비-admin/admin 3단계 UX
+
+---
+
+## 11. 향후 작업 후보
+
+### Phase B — PDF 보호 (선택, 도메인 불필요)
+Drive PDF 비공개 + Workers proxy. 현재는 페이지 측 차단만이라 URL 우회 가능. 진정 차단 필요 시 1주.
+
+### Phase C — 마케팅 메일 발송 (도메인 필요, 연 1.5만원)
+- DB 동의자 추출 (admin CSV로 가능)
+- Brevo / Resend SDK 통합
+- 자체 도메인 + SPF/DKIM
+- 발송 UI (템플릿 + 발송 대상 segment)
+- 수신거부 링크 + [광고] 표기 (정보통신망법)
 
 ### 부가
-- 회차 목차 페이지 (`/rounds/`) + 회차별 페이지 (`/rounds/{type}/{round}`) — 동적 라우트, 203 페이지 정적 생성
-- KPC 로고 헤더/푸터/favicon 통합 (astro:assets 자동 최적화 + densities)
-- "Powered by KPC 기술사회" 푸터
-- og/twitter 메타 태그, robots.txt
-- ID 규칙 보강 (cert 슬러그 + academy 슬러그 추가)
-
-### 매핑 커버리지
-- 기출 47회차 중 14회차 → 매처 보강 후 다수 회차 추가
-- 합숙 28회차 (옛 회차 13개 제외)
-- 모의 98회차 → 새 패턴 추가로 더 매핑 예상
-- 빌드 시 8,922건 / 12,158건 = **73%** 매핑됨
+- 수동 sitemap.xml (build:data가 회차 페이지 URL 자동 생성)
+- /stats 시각화 페이지
+- ITPE 어댑터 (ITPE 데이터 확보 시)
+- 자체 출제 표준 템플릿 어댑터
 
 ---
 
-## 10. 향후 작업 후보
-
-- **검색 히스토리** (localStorage 기반 최근 검색어)
-- **수동 sitemap.xml** (build:data가 회차 페이지 URL list 자동 생성)
-- **합숙 옛 회차** 회차→연월 매핑 표 추가 (095, 096, 098, 099, 090, 092, 093, 101, 102, 104, 105, 107, 122합숙 등)
-- **/stats 페이지** (현재 보류)
-- **ITPE 어댑터** 신규 작성 (ITPE 데이터 확보 시)
-- **자체 출제 표준 템플릿** 어댑터
-- **Naver OAuth + 백엔드 proxy** (인증 필요한 운영 단계)
-
----
-
-## 11. 빠른 명령어 모음
+## 12. 빠른 명령어
 
 ### 로컬 개발
 ```bash
 npm install
-npm run dev          # http://localhost:4321/kpcitpe-search
+npm run dev          # http://localhost:4321
 npm run build:data   # data/problems.json 생성
-npm run build        # 데이터 + 사이트 빌드
-npm run preview      # dist 결과 미리보기
+npm run build        # 데이터 + 사이트
+npm run preview
 ```
 
-### Sync 관련
+### Sync
 ```bash
-gh workflow run sync-drive.yml --ref main         # sync 수동 실행
-gh run list --workflow=sync-drive.yml --limit 3   # 최근 실행 확인
-gh run view <RUN_ID> --log | less                 # 상세 로그
+gh workflow run sync-drive.yml --ref main
+gh run list --workflow=sync-drive.yml --limit 3
+gh run view <RUN_ID> --log
 ```
 
-### 빌드 상태
+### 배포 상태
 ```bash
-gh run list --workflow=build-and-deploy.yml --limit 3
+gh run list --workflow=deploy-cloudflare.yml --limit 3
 ```
 
-### 매핑 통계
-```python
-python3 -c "
-import json
-d = json.load(open('data/mappings/explanation-files.json'))
-for cat in ['기출', '합숙']:
-    print(f'{cat}: {len(d.get(cat, {}))}회차')
-print(f'모의 KPC: {len(d.get(\"모의\", {}).get(\"KPC\", {}))}회차')"
+### D1 직접 쿼리
+```bash
+wrangler d1 execute kpcitpe-users --command "SELECT COUNT(*) FROM users" --remote
+```
+
+### Cloudflare env_var 변경
+```bash
+curl -X PATCH "https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/pages/projects/kpcitpe-search" \
+  -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: application/json" \
+  -d '{"deployment_configs":{"production":{"env_vars":{...}}}}'
 ```
 
 ---
 
-## 12. 메모리 (.claude/projects/.../memory/)
+## 13. 보안 모델
 
-다른 Claude 세션이 이 프로젝트의 컨텍스트를 빠르게 회복하기 위해 저장된 메모리들:
+- **GitHub 레포**: public, 본인만 쓰기. 2FA 권장.
+- **Cloudflare 배포**: API token 비밀. 노출 시 routine 재발급 (cf 대시보드 → My Profile → API Tokens → Roll).
+- **Drive**: SA `kpc-drive-bot@kpcitpe-search.iam.gserviceaccount.com` 편집자 권한. 폴더는 "링크 있는 모든 사용자 - 뷰어".
+- **JWT**: HMAC-SHA256, JWT_SECRET 32 bytes, 7일 만료.
+- **세션 쿠키**: HttpOnly, Secure, SameSite=Lax.
+- **OAuth state**: CSRF 방어 쿠키 + 검증.
+- **D1**: wrangler.toml binding으로 자동 인증. SA JSON 미사용.
+- **Admin**: ADMIN_EMAILS 화이트리스트 (콤마 구분).
+- **노출된 시크릿** (이전 채팅에서 평문 등장): Cloudflare API token, Naver Client Secret, JWT_SECRET — 위험 낮음 (결제 손실 X). routine 재발급 권장.
 
-- `project_hosting.md` — GitHub Pages 배포 결정
+---
+
+## 14. 메모리 (.claude/projects/.../memory/) — 데스크탑 Claude Code 전용
+
+다른 세션에서 자동 회복:
+- `project_hosting.md` — Cloudflare Pages 배포 결정 (GitHub Pages 폐기)
 - `project_data_model_academy.md` — 합숙도 academy 귀속, 기출만 null
-- `project_data_normalization.md` — 회차 -N 접미사, ID에 cert 슬러그, 소문제 N.M, 옛 회차 단답형 자동 순번
-- `feedback_git_author.md` — git commit author 이메일 ksujae@gmail.com 사용
+- `project_data_normalization.md` — 회차 -N 접미사, ID에 cert 슬러그, 소문제, 옛 회차 자동 순번
+- `feedback_git_author.md` — git commit author = ksujae@gmail.com
+
+---
+
+## 15. 휴대폰 / 다른 디바이스에서 작업 이어가기
+
+- **사이트 사용**: https://kpcitpe-search.pages.dev/ 어디서든 OK (반응형)
+- **Claude 작업**:
+  - 데스크탑 Claude Code → 같은 머신 재시작 OK (메모리 자동 회복)
+  - 휴대폰 / 다른 머신 / claude.ai 웹 → 이 PROJECT.md 파일을 첨부/붙여넣기로 컨텍스트 회복
+
+---
+
+## 16. 알려진 이슈 / 한계
+
+- **PDF 다운로드 완전 차단 안 됨**: 개인 Drive `copyRequiresWriterPermission`은 owner만 변경 가능. SA 자동화 불가. 진정 차단은 자체 PDF 뷰어 필요 (Phase B).
+- **합숙 090/092회**: 엑셀 자체에 데이터 없어 매핑 대상 없음.
+- **wrangler 3.114.1**: pages 프로젝트는 wrangler.toml에 `[build]` 섹션 거부. 우리 `build` 섹션 제거됨.
+- **Cloudflare API token 권한**: 기본 Workers 템플릿엔 D1 권한 없음. D1 생성/마이그레이션은 대시보드 또는 권한 추가 토큰 필요.
+- **GitHub Pages**: 2026-05-05 비활성화. 외부 링크에 옛 URL 있으면 404.
+
+---
+
+이 문서가 단일 컨텍스트입니다. 다른 세션 시작 시 이 파일을 먼저 읽고 작업 이어가면 됩니다.
