@@ -3,6 +3,10 @@ compatibility_date = "2025-04-01"
 compatibility_flags = ["nodejs_compat"]
 pages_build_output_dir = "./dist"
 
+# Pages Advanced Mode (_worker.js/) 명시 — wrangler가 디렉토리 형태도 Worker로 인식
+[build]
+command = "echo skip"
+
 # 환경변수/시크릿은 Cloudflare 대시보드 또는 wrangler secret put 으로 등록.
 # 향후 Phase A2에서 추가:
 #   NAVER_CLIENT_ID
