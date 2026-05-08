@@ -92,10 +92,8 @@ async function diagnoseSplitFolders(writeDrive: any) {
 }
 
 const SAMPLES = [
-  { label: '기출 138회 1교시 정보관리 (최신)', fileId: '1znchT2G42naouaiFSwEEp-7jGiGcHQ_G' },
-  { label: '기출 87회 1교시 정보관리 (옛)', fileId: '1te6VyAxWJeQF72TBVe705ICSqpl5P606' },
-  { label: '모의 2026.04 1교시 (최신)', fileId: '1GliUlJHUqohC6F21hdNEIfzBrnR_C2bk' },
-  { label: '모의 2010.10 1교시 (옛)', fileId: '1JeQd7R44XjECeZyOLqgqXETnPTWOBE9u' },
+  { label: '기출 87회 1교시 정보관리 (옛, 13문항/47p)', fileId: '1te6VyAxWJeQF72TBVe705ICSqpl5P606' },
+  { label: '모의 2010.10 1교시 (옛, 13문항/35p)', fileId: '1JeQd7R44XjECeZyOLqgqXETnPTWOBE9u' },
 ];
 
 async function dumpPdfHead(readDrive: any, fileId: string, label: string) {
@@ -105,15 +103,15 @@ async function dumpPdfHead(readDrive: any, fileId: string, label: string) {
     const buf = Buffer.from(res.data as ArrayBuffer);
     const data = new Uint8Array(buf);
     const doc = await pdfjsLib.getDocument({ data, isEvalSupported: false }).promise;
-    console.log(`다운로드: ${buf.length} bytes, 페이지: ${doc.numPages}`);
+    console.log(`다운로드: ${buf.length} bytes, 페이지: ${doc.numPages}\n`);
 
-    const dump = Math.min(4, doc.numPages);
-    for (let i = 1; i <= dump; i++) {
+    // 풀이부 깊이 분석 위해 모든 페이지 덤프 (각 600자)
+    for (let i = 1; i <= doc.numPages; i++) {
       const page = await doc.getPage(i);
       const tc = await page.getTextContent();
       const items = tc.items as any[];
       const fullText = items.map((it) => it.str).join(' ');
-      const head = fullText.slice(0, 350).replace(/\s+/g, ' ').trim();
+      const head = fullText.slice(0, 500).replace(/\s+/g, ' ').trim();
 
       const viewport = page.getViewport({ scale: 1 });
       const W = viewport.width;
@@ -124,31 +122,37 @@ async function dumpPdfHead(readDrive: any, fileId: string, label: string) {
       });
       const tops = topItems.map((it) => `[${it.str}]`).join('');
 
-      // "문 제 N." 패턴 매칭 시도
-      const reMunje = /문\s*제\s*(\d{1,2})\s*\./g;
-      const munjeHits: string[] = [];
-      let m: RegExpExecArray | null;
-      while ((m = reMunje.exec(fullText)) !== null) munjeHits.push(`문 제 ${m[1]}.`);
+      const bottomItems = items.filter((it) => {
+        const y = it.transform?.[5] ?? 0;
+        return y < H * 0.08 && it.str?.trim().length > 0;
+      });
+      const bottoms = bottomItems.map((it) => `[${it.str}]`).join('');
 
-      // 다른 가능한 마커들 — "[1]", "Q1.", "1번", "1)", "1." 등
-      const altPatterns: Array<[string, RegExp]> = [
-        ['[N]', /\[(\d{1,2})\]/g],
-        ['QN.', /Q\s*(\d{1,2})\s*\./g],
-        ['N번', /(\d{1,2})\s*번\s*[:\.]/g],
-        ['N)', /(?:^|\s)(\d{1,2})\)/g],
+      // 다양한 마커 후보 패턴 모두 시도
+      const patterns: Array<[string, RegExp]> = [
+        ['문제N.', /문\s*제\s*(\d{1,2})\s*\./g],
+        ['[N]', /\[\s*(\d{1,2})\s*\]/g],
         ['<N>', /<\s*(\d{1,2})\s*>/g],
+        ['Q.N', /Q\s*[\.\-]\s*(\d{1,2})/g],
+        ['N번)', /(\d{1,2})\s*번\s*\)/g],
+        ['N번.', /(\d{1,2})\s*번\s*[:\.]/g],
+        ['(N)', /\((\d{1,2})\)/g],
+        ['【N】', /【\s*(\d{1,2})\s*】/g],
+        ['N.제목', /(?:^|\n|\s{2,})(\d{1,2})\.\s*[가-힣]{2,}/g],
+        ['답)/풀이)', /(?:답|풀이|해설)\s*[\)\]:\.]/g],
+        ['※문제N', /※\s*문제\s*(\d{1,2})/g],
       ];
-      const altHits: string[] = [];
-      for (const [label, re] of altPatterns) {
-        const matches = [...fullText.matchAll(re)].slice(0, 3).map((mm) => `${label}=${mm[0]}`);
-        if (matches.length) altHits.push(...matches);
+      const hits: string[] = [];
+      for (const [tag, re] of patterns) {
+        const matches = [...fullText.matchAll(re)].slice(0, 4).map((mm) => `${tag}=${JSON.stringify(mm[0])}`);
+        if (matches.length) hits.push(...matches);
       }
 
-      console.log(`  ━ p${i} ━`);
-      console.log(`    상단: ${tops || '(없음)'}`);
-      console.log(`    본문첫: ${head}`);
-      console.log(`    "문 제 N." 매칭: ${munjeHits.length ? munjeHits.join(', ') : '(없음)'}`);
-      console.log(`    기타 패턴 후보: ${altHits.length ? altHits.slice(0, 8).join(' | ') : '(없음)'}`);
+      console.log(`━ p${i} ━`);
+      console.log(`  상단: ${tops || '(없음)'}`);
+      console.log(`  하단: ${bottoms || '(없음)'}`);
+      console.log(`  본문첫: ${head}`);
+      console.log(`  마커: ${hits.length ? hits.slice(0, 10).join(' / ') : '(없음)'}`);
     }
   } catch (err) {
     console.log(`실패: ${(err as Error).message}`);
@@ -157,10 +161,6 @@ async function dumpPdfHead(readDrive: any, fileId: string, label: string) {
 
 async function main() {
   const readDrive = makeReadDrive();
-  const writeDrive = makeWriteDrive();
-
-  await diagnoseSplitFolders(writeDrive);
-
   for (const s of SAMPLES) {
     await dumpPdfHead(readDrive, s.fileId, s.label);
   }
