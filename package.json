@@ -11,6 +11,7 @@
     "sync:drive": "tsx scripts/sync-drive-mappings.ts",
     "split:pdfs": "tsx scripts/split-pdfs.ts",
     "split:debug": "tsx scripts/debug-pdf-text.ts",
+    "split:diag": "tsx scripts/debug-multi.ts",
     "preview": "astro preview",
     "astro": "astro"
   },
