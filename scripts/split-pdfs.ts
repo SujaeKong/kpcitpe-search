@@ -89,6 +89,29 @@ async function findFileInFolder(
   return f ? { id: f.id!, name: f.name! } : null;
 }
 
+async function listFilesInFolder(
+  drive: any,
+  parentId: string,
+): Promise<Array<{ id: string; name: string }>> {
+  const out: Array<{ id: string; name: string }> = [];
+  let pageToken: string | undefined;
+  do {
+    const list = await drive.files.list({
+      q: `'${parentId}' in parents and trashed = false`,
+      fields: 'nextPageToken, files(id, name)',
+      pageSize: 100,
+      pageToken,
+    });
+    for (const f of list.data.files ?? []) out.push({ id: f.id!, name: f.name! });
+    pageToken = list.data.nextPageToken ?? undefined;
+  } while (pageToken);
+  return out;
+}
+
+async function trashFile(drive: any, fileId: string): Promise<void> {
+  await drive.files.update({ fileId, requestBody: { trashed: true } });
+}
+
 async function downloadPdf(drive: any, fileId: string): Promise<Buffer> {
   const res = await drive.files.get(
     { fileId, alt: 'media' },
@@ -177,45 +200,35 @@ interface QuestionRange {
   endPage: number;
 }
 
+/**
+ * KPC 해설지 표준 마커: "문 제 N." (pdfjs 추출 시 공백이 들어감).
+ * 답안 본문 안의 "3.", "가." 같은 소제목과 명확히 구분됨.
+ *
+ * 한 페이지에서 처음 등장하는 "문 제 N."가 그 페이지부터 N번 문항 시작.
+ * 동일 페이지에 여러 "문 제 N."이 있을 일은 거의 없음 (해설지 1문항당 최소 1쪽).
+ */
 function detectQuestionRanges(pageTexts: string[]): QuestionRange[] {
-  const found: Array<{ page: number; numbers: number[] }> = [];
+  const startPageOf = new Map<number, number>();
+  const re = /문\s*제\s*(\d{1,2})\s*\./g;
   for (let i = 0; i < pageTexts.length; i++) {
-    const head = pageTexts[i].slice(0, 400);
-    const numbers: number[] = [];
-    const re = /(?:^|\s)(\d{1,2})\.(?!\d)/g;
-    let m;
-    while ((m = re.exec(head)) !== null) {
+    const text = pageTexts[i];
+    let m: RegExpExecArray | null;
+    re.lastIndex = 0;
+    while ((m = re.exec(text)) !== null) {
       const n = parseInt(m[1], 10);
-      if (n >= 1 && n <= 30) numbers.push(n);
-    }
-    found.push({ page: i + 1, numbers });
-  }
-
-  const firstPages = new Map<number, number>();
-  for (const f of found) {
-    for (const n of f.numbers) {
-      if (!firstPages.has(n)) firstPages.set(n, f.page);
+      if (n >= 1 && n <= 30 && !startPageOf.has(n)) {
+        startPageOf.set(n, i + 1);
+      }
     }
   }
 
-  const sorted = [...firstPages.entries()].sort((a, b) => a[1] - b[1]);
+  const sorted = [...startPageOf.entries()].sort((a, b) => a[1] - b[1]);
   const ranges: QuestionRange[] = [];
   for (let i = 0; i < sorted.length; i++) {
     const [num, start] = sorted[i];
     const next = sorted[i + 1];
-    const end = next ? Math.max(start, next[1] - 1) : pageTexts.length;
+    const end = next ? next[1] - 1 : pageTexts.length;
     ranges.push({ questionNumber: num, startPage: start, endPage: end });
-  }
-  for (let i = 0; i < ranges.length - 1; i++) {
-    const cur = ranges[i];
-    const nxt = ranges[i + 1];
-    if (nxt.startPage === cur.endPage + 1) {
-      const nxtPageHead = pageTexts[nxt.startPage - 1].slice(0, 400);
-      const reCur = new RegExp(`(?:^|\\s)${cur.questionNumber}\\.(?!\\d)`);
-      if (reCur.test(nxtPageHead)) {
-        cur.endPage = nxt.startPage;
-      }
-    }
   }
   return ranges.sort((a, b) => a.questionNumber - b.questionNumber);
 }
@@ -306,6 +319,19 @@ async function processSplitTask(
     const typeFolderId = await ensureFolder(writeDrive, task.sourceType, splitRootId);
     const roundFolderId = await ensureFolder(writeDrive, task.round, typeFolderId);
 
+    // OVERWRITE=1이면 같은 폴더 내 sessionPart에 해당하는 기존 파일 휴지통으로 이동.
+    // 같은 (회차, 종목, 일차, 교시) prefix로만 정리해 다른 교시 파일은 보존.
+    if (process.env.OVERWRITE === '1') {
+      const sessionLabel = task.sessionPart ? `${task.session}_${task.sessionPart}` : task.session;
+      const prefix = `${task.sourceType}_${task.round}_${task.certScope}_${sessionLabel}_`;
+      const existing = await listFilesInFolder(writeDrive, roundFolderId);
+      const toTrash = existing.filter((f) => f.name.startsWith(prefix));
+      for (const f of toTrash) {
+        await trashFile(writeDrive, f.id);
+      }
+      console.log(`   ⌫ OVERWRITE: prefix "${prefix}" 매칭 ${toTrash.length}개 휴지통 이동`);
+    }
+
     const problemByQ = new Map(task.problems.map((p) => [p.questionNumber, p]));
 
     for (const range of detectedRanges) {
@@ -338,25 +364,18 @@ async function processSplitTask(
         console.log(`   ✔ ${name} → ${uploadedFile.id} (p${range.startPage}-${range.endPage}, ${pageBuf.length} bytes)`);
       }
 
-      // 자체검증 — 업로드 후 다시 받아서 첫 페이지 텍스트에 N. 포함되는지 확인
+      // 자체검증 — 업로드된 분할 PDF의 첫 페이지에 "문 제 N." 마커 존재 확인
       let validated = false;
       let validationNote: string | undefined;
       try {
         const verifyBuf = await downloadPdf(writeDrive, uploadedFile.id);
         const verifyTexts = await extractPageTexts(verifyBuf);
-        const firstHead = (verifyTexts[0] ?? '').slice(0, 400);
-        const re = new RegExp(`(?:^|\\s)${range.questionNumber}\\.(?!\\d)`);
-        if (re.test(firstHead)) {
+        const firstText = verifyTexts[0] ?? '';
+        const markerRe = new RegExp(`문\\s*제\\s*${range.questionNumber}\\s*\\.`);
+        if (markerRe.test(firstText)) {
           validated = true;
         } else {
-          // 첫 페이지에 없으면 전 페이지 검색 — 이전 문항 끝 페이지가 같이 들어간 경우 정상 가능
-          const allText = verifyTexts.join(' ').slice(0, 2000);
-          if (re.test(allText)) {
-            validated = true;
-            validationNote = '첫 페이지 외에서 발견 (이전 문항 잔여 페이지 포함)';
-          } else {
-            validationNote = `${range.questionNumber}. 패턴이 분할 PDF에 없음`;
-          }
+          validationNote = `"문 제 ${range.questionNumber}." 마커가 분할 PDF 첫 페이지에 없음`;
         }
       } catch (verErr) {
         validationNote = `검증 실패: ${(verErr as Error).message}`;
