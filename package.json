@@ -10,6 +10,7 @@
     "build:data": "tsx scripts/build.ts",
     "sync:drive": "tsx scripts/sync-drive-mappings.ts",
     "split:pdfs": "tsx scripts/split-pdfs.ts",
+    "split:debug": "tsx scripts/debug-pdf-text.ts",
     "preview": "astro preview",
     "astro": "astro"
   },
