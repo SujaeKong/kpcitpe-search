@@ -12,6 +12,9 @@ public/data/
 /data/problems.json
 /data/stats.json
 
+# PDF 분할 임시 산출물
+/tmp-split/
+
 # 로컬 Claude Code 설정
 .claude/
 

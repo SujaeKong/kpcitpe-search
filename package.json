@@ -9,6 +9,7 @@
     "build": "npm run build:data && astro build",
     "build:data": "tsx scripts/build.ts",
     "sync:drive": "tsx scripts/sync-drive-mappings.ts",
+    "split:pdfs": "tsx scripts/split-pdfs.ts",
     "preview": "astro preview",
     "astro": "astro"
   },
@@ -30,6 +31,8 @@
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "googleapis": "^144.0.0",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^5.7.284",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3",
     "xlsx": "^0.18.5"
