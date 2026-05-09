@@ -555,12 +555,24 @@ interface TestSpec {
 }
 
 const TEST_SPECS: TestSpec[] = [
-  // 합숙 — 최신/중기/옛
+  // 합숙 — 1일차 1교시(서술형 16) + 1일차 2교시(서술형 8) + 2일차 1교시(서술형 16)
   {
     fileId: '1RAstKItBKBU6Rh-egPgiTHiQuUygQSC1',
     fileName: 'KPC 138회 합숙해설집_1일차_1교시_통합.pdf',
     sourceType: '합숙', round: '2026.02', certScope: '공통', session: '1일차', sessionPart: '1교시',
     problemFilter: (p) => p.sourceType === '합숙' && p.round === '2026.02' && p.session === '1일차' && p.sessionPart === '1교시',
+  },
+  {
+    fileId: '1lKgpcBxyJ05-wkP6E178q0Ba4nOxxJJi',
+    fileName: 'KPC 138회 합숙해설집_1일차_2교시_통합.pdf',
+    sourceType: '합숙', round: '2026.02', certScope: '공통', session: '1일차', sessionPart: '2교시',
+    problemFilter: (p) => p.sourceType === '합숙' && p.round === '2026.02' && p.session === '1일차' && p.sessionPart === '2교시',
+  },
+  {
+    fileId: '1NNGXbzXEgXuZjQKEexBXlsPVP727u_zA',
+    fileName: 'KPC 138회 합숙해설집_2일차_1교시_통합.pdf',
+    sourceType: '합숙', round: '2026.02', certScope: '공통', session: '2일차', sessionPart: '1교시',
+    problemFilter: (p) => p.sourceType === '합숙' && p.round === '2026.02' && p.session === '2일차' && p.sessionPart === '1교시',
   },
   {
     fileId: '1mvn5eLRgLpEXYUUpFKSGaAdpOF3R1LOD',
@@ -580,12 +592,30 @@ const TEST_SPECS: TestSpec[] = [
     sourceType: '합숙', round: '2015.07', certScope: '공통', session: '1일차', sessionPart: '1교시',
     problemFilter: (p) => p.sourceType === '합숙' && p.round === '2015.07' && p.session === '1일차' && p.sessionPart === '1교시',
   },
-  // 기출 — 최신/중기/옛
+  // 기출 138 — 1교시(13문항/단답) + 2/3/4교시(6문항/서술)
   {
     fileId: '1znchT2G42naouaiFSwEEp-7jGiGcHQ_G',
     fileName: '138회_기출풀이_정보관리_1교시.pdf',
     sourceType: '기출', round: '138', certScope: '정보관리', session: '1', sessionPart: null,
     problemFilter: (p) => p.sourceType === '기출' && p.round === '138' && p.certScope === '정보관리' && p.session === '1',
+  },
+  {
+    fileId: '1CxygHAGV6U_yrEQgkGJWstDz9qMPHdqP',
+    fileName: '138회_기출풀이_컴시응 2교시.pdf',
+    sourceType: '기출', round: '138', certScope: '컴시응', session: '2', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '기출' && p.round === '138' && p.certScope === '컴시응' && p.session === '2',
+  },
+  {
+    fileId: '14RV-yz8KrAIjTzT00TGVCfHPLmFGpe1X',
+    fileName: '138회_기출풀이_컴시응 3교시.pdf',
+    sourceType: '기출', round: '138', certScope: '컴시응', session: '3', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '기출' && p.round === '138' && p.certScope === '컴시응' && p.session === '3',
+  },
+  {
+    fileId: '1ixxkNEv4Nv5W8DIAnqJFvhaO4Dr7lzOa',
+    fileName: '138회_기출풀이_정보관리 4교시_보완.pdf',
+    sourceType: '기출', round: '138', certScope: '정보관리', session: '4', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '기출' && p.round === '138' && p.certScope === '정보관리' && p.session === '4',
   },
   {
     fileId: '1VhbDaiVw_iaWc2GS-QvA7x6zRuXRhmCu',
@@ -599,12 +629,30 @@ const TEST_SPECS: TestSpec[] = [
     sourceType: '기출', round: '87', certScope: '정보관리', session: '1', sessionPart: null,
     problemFilter: (p) => p.sourceType === '기출' && p.round === '87' && p.certScope === '정보관리' && p.session === '1',
   },
-  // 모의 — 최신/중기/옛
+  // 모의 — 129회(2026.04) 1/2/3/4교시 모두 + 옛 회차
   {
     fileId: '1GliUlJHUqohC6F21hdNEIfzBrnR_C2bk',
     fileName: '제129회_해설집_202604_1교시.pdf',
     sourceType: '모의', round: '2026.04', certScope: '공통', session: '1', sessionPart: null,
     problemFilter: (p) => p.sourceType === '모의' && p.round === '2026.04' && p.session === '1',
+  },
+  {
+    fileId: '1BrXh8iEk9Z1LA1rfPK1cDjcQN9mcgF9M',
+    fileName: '제129회_해설집_202604_2교시.pdf',
+    sourceType: '모의', round: '2026.04', certScope: '공통', session: '2', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '모의' && p.round === '2026.04' && p.session === '2',
+  },
+  {
+    fileId: '1DKkqqYhPNHg9koT6G_kMUigZtKMNHkC3',
+    fileName: '제129회_해설집_202604_3교시.pdf',
+    sourceType: '모의', round: '2026.04', certScope: '공통', session: '3', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '모의' && p.round === '2026.04' && p.session === '3',
+  },
+  {
+    fileId: '1nRJOZONwojU0sC4TeUKfSj5rQcDkEEKx',
+    fileName: '제129회_해설집_202604_4교시.pdf',
+    sourceType: '모의', round: '2026.04', certScope: '공통', session: '4', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '모의' && p.round === '2026.04' && p.session === '4',
   },
   {
     fileId: '1fXlCEZz42JZx2bDyYd3vrPx00cNiJpTZ',
