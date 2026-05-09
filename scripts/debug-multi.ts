@@ -92,8 +92,11 @@ async function diagnoseSplitFolders(writeDrive: any) {
 }
 
 const SAMPLES = [
-  { label: '기출 87회 1교시 정보관리 (옛, 13문항/47p)', fileId: '1te6VyAxWJeQF72TBVe705ICSqpl5P606' },
-  { label: '모의 2010.10 1교시 (옛, 13문항/35p)', fileId: '1JeQd7R44XjECeZyOLqgqXETnPTWOBE9u' },
+  { label: '합숙 2018.01 1일차 1교시 (검출 실패)', fileId: '1qqD4rNvAV1j8qRKlD7JDxpNmxjBAgXHf' },
+  { label: '합숙 2015.07 1일차 1교시 (검출 실패)', fileId: '1-ZqF6vmQOHR2JzkCnbFHn2ZNUHxEc4DA' },
+  { label: '기출 110회 컴시응 1교시 (검출 실패)', fileId: '1VhbDaiVw_iaWc2GS-QvA7x6zRuXRhmCu' },
+  { label: '모의 2017.07 1교시 (검출 실패)', fileId: '1hT3A2-8EYwMC8LOkXT_H0PQl2RQeuY84' },
+  { label: '모의 2026.04 1교시 (16중 13만 검출)', fileId: '1GliUlJHUqohC6F21hdNEIfzBrnR_C2bk' },
 ];
 
 async function dumpPdfHead(readDrive: any, fileId: string, label: string) {
@@ -105,8 +108,9 @@ async function dumpPdfHead(readDrive: any, fileId: string, label: string) {
     const doc = await pdfjsLib.getDocument({ data, isEvalSupported: false }).promise;
     console.log(`다운로드: ${buf.length} bytes, 페이지: ${doc.numPages}\n`);
 
-    // 풀이부 깊이 분석 위해 모든 페이지 덤프 (각 600자)
-    for (let i = 1; i <= doc.numPages; i++) {
+    // 풀이부 시작 부분 12페이지만 (5 PDF × ~12p = 60 chunks)
+    const limit = Math.min(12, doc.numPages);
+    for (let i = 1; i <= limit; i++) {
       const page = await doc.getPage(i);
       const tc = await page.getTextContent();
       const items = tc.items as any[];
