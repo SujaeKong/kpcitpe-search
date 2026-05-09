@@ -201,36 +201,95 @@ interface QuestionRange {
 }
 
 /**
- * KPC 해설지 표준 마커: "문 제 N." (pdfjs 추출 시 공백이 들어감).
- * 답안 본문 안의 "3.", "가." 같은 소제목과 명확히 구분됨.
+ * 다중 시그널 검출 — KPC 해설지 형식이 시기/작성자별로 다양해서 단일 패턴 불충분.
  *
- * 한 페이지에서 처음 등장하는 "문 제 N."가 그 페이지부터 N번 문항 시작.
- * 동일 페이지에 여러 "문 제 N."이 있을 일은 거의 없음 (해설지 1문항당 최소 1쪽).
+ * 시그널 우선순위(첫 번째로 ≥3개 문항 검출되는 시그널 채택):
+ *  1) munje:        "문 제 N." — 최신 합숙/기출/모의 (138회 합숙, 138회 기출, 129회 모의 등)
+ *  2) bracketmunje: "[문제풀이] N." — 87회 등 옛 기출 형식
+ *  3) kpc-domain:   "출 제 도 메 인" 키워드 + 페이지 본문 시작에 ") N 제목" — 옛 22회 등 모의
+ *
+ * 검증 실패(문항 검출 < 3) 시 ranges 빈 배열 반환 → 호출자가 분할 포기, 통합 PDF로 fallback.
  */
-function detectQuestionRanges(pageTexts: string[]): QuestionRange[] {
-  const startPageOf = new Map<number, number>();
-  const re = /문\s*제\s*(\d{1,2})\s*\./g;
-  for (let i = 0; i < pageTexts.length; i++) {
-    const text = pageTexts[i];
-    let m: RegExpExecArray | null;
-    re.lastIndex = 0;
-    while ((m = re.exec(text)) !== null) {
-      const n = parseInt(m[1], 10);
-      if (n >= 1 && n <= 30 && !startPageOf.has(n)) {
-        startPageOf.set(n, i + 1);
+interface SignalConfig {
+  name: string;
+  extractNumbers: (pageText: string) => number[];
+  validateSplit: (splitText: string, n: number) => boolean;
+}
+
+const SIGNALS: SignalConfig[] = [
+  {
+    name: 'munje',
+    extractNumbers: (text) => {
+      const nums: number[] = [];
+      const re = /문\s*제\s*(\d{1,2})\s*\./g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(text)) !== null) {
+        const n = parseInt(m[1], 10);
+        if (n >= 1 && n <= 30) nums.push(n);
+      }
+      return nums;
+    },
+    validateSplit: (text, n) => new RegExp(`문\\s*제\\s*${n}\\s*\\.`).test(text),
+  },
+  {
+    name: 'bracketmunje',
+    extractNumbers: (text) => {
+      const nums: number[] = [];
+      const re = /\[\s*문\s*제\s*풀\s*이\s*\]\s*(\d{1,2})\s*\./g;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(text)) !== null) {
+        const n = parseInt(m[1], 10);
+        if (n >= 1 && n <= 30) nums.push(n);
+      }
+      return nums;
+    },
+    validateSplit: (text, n) => new RegExp(`\\[\\s*문\\s*제\\s*풀\\s*이\\s*\\]\\s*${n}\\s*\\.`).test(text),
+  },
+  {
+    name: 'kpc-domain',
+    extractNumbers: (text) => {
+      if (!/출\s*제\s*도\s*메\s*인/.test(text)) return [];
+      const head = text.slice(0, 700);
+      // ") N 제목" 또는 ") N M 제목" (10~19는 1과 0~9 사이 공백 변형 가능)
+      const m = head.match(/\)\s*(\d)\s*(\d?)\s+[가-힣A-Za-z]/);
+      if (!m) return [];
+      const numStr = m[1] + (m[2] || '');
+      const n = parseInt(numStr, 10);
+      if (n >= 1 && n <= 30) return [n];
+      return [];
+    },
+    validateSplit: (text, n) => /출\s*제\s*도\s*메\s*인/.test(text),
+  },
+];
+
+function detectQuestionRangesWithSignal(pageTexts: string[]): {
+  ranges: QuestionRange[];
+  signal: string;
+} {
+  for (const sig of SIGNALS) {
+    const startPageOf = new Map<number, number>();
+    for (let i = 0; i < pageTexts.length; i++) {
+      const nums = sig.extractNumbers(pageTexts[i]);
+      for (const n of nums) {
+        if (!startPageOf.has(n)) startPageOf.set(n, i + 1);
       }
     }
+    if (startPageOf.size >= 3) {
+      const sorted = [...startPageOf.entries()].sort((a, b) => a[1] - b[1]);
+      const ranges: QuestionRange[] = [];
+      for (let i = 0; i < sorted.length; i++) {
+        const [num, start] = sorted[i];
+        const next = sorted[i + 1];
+        const end = next ? next[1] - 1 : pageTexts.length;
+        ranges.push({ questionNumber: num, startPage: start, endPage: end });
+      }
+      return {
+        ranges: ranges.sort((a, b) => a.questionNumber - b.questionNumber),
+        signal: sig.name,
+      };
+    }
   }
-
-  const sorted = [...startPageOf.entries()].sort((a, b) => a[1] - b[1]);
-  const ranges: QuestionRange[] = [];
-  for (let i = 0; i < sorted.length; i++) {
-    const [num, start] = sorted[i];
-    const next = sorted[i + 1];
-    const end = next ? next[1] - 1 : pageTexts.length;
-    ranges.push({ questionNumber: num, startPage: start, endPage: end });
-  }
-  return ranges.sort((a, b) => a.questionNumber - b.questionNumber);
+  return { ranges: [], signal: 'none' };
 }
 
 // ===== 페이지 추출 =====
@@ -288,6 +347,7 @@ interface SplitResult {
   uploaded: UploadedQuestion[];
   errors: string[];
   detectedRanges: QuestionRange[];
+  detectionSignal: string;
   pageCount: number;
 }
 
@@ -299,6 +359,7 @@ async function processSplitTask(
 ): Promise<SplitResult> {
   const errors: string[] = [];
   let detectedRanges: QuestionRange[] = [];
+  let detectionSignal = 'none';
   let pageCount = 0;
   const uploaded: UploadedQuestion[] = [];
   try {
@@ -312,8 +373,16 @@ async function processSplitTask(
     pageCount = pageTexts.length;
     console.log(`   페이지: ${pageCount}`);
 
-    detectedRanges = detectQuestionRanges(pageTexts);
+    const detection = detectQuestionRangesWithSignal(pageTexts);
+    detectedRanges = detection.ranges;
+    detectionSignal = detection.signal;
+    console.log(`   시그널: ${detectionSignal}`);
     console.log(`   감지된 문항: ${detectedRanges.length}개 — ${detectedRanges.map((r) => `${r.questionNumber}번:p${r.startPage}-${r.endPage}`).join(', ')}`);
+
+    if (detectedRanges.length === 0) {
+      errors.push(`검출 실패 — 어떤 시그널도 ≥3 문항 추출 못 함. 통합 PDF fallback 권장.`);
+      return { task, ok: false, uploaded, errors, detectedRanges, detectionSignal, pageCount };
+    }
 
     // 업로드 폴더 — _split/{종류}/{회차}/
     const typeFolderId = await ensureFolder(writeDrive, task.sourceType, splitRootId);
@@ -332,14 +401,24 @@ async function processSplitTask(
       console.log(`   ⌫ OVERWRITE: prefix "${prefix}" 매칭 ${toTrash.length}개 휴지통 이동`);
     }
 
-    const problemByQ = new Map(task.problems.map((p) => [p.questionNumber, p]));
+    // problems와 PDF 내부 문항번호가 다른 경우(87회 등) 대응:
+    //   detectedRanges의 questionNumber 정렬 순서 ↔ problems의 questionNumber 정렬 순서로 1:1 매핑.
+    //   파일명에는 problems의 questionNumber를 사용 (사이트 매핑이 그 번호로 키 생성).
+    const sortedProblems = [...task.problems]
+      .filter((p) => typeof p.questionNumber === 'number')
+      .sort((a, b) => (a.questionNumber as number) - (b.questionNumber as number));
+    const sortedRanges = [...detectedRanges].sort((a, b) => a.startPage - b.startPage);
 
-    for (const range of detectedRanges) {
-      const problem = problemByQ.get(range.questionNumber);
-      if (!problem) {
-        errors.push(`${range.questionNumber}번: problems.json에 매칭 없음`);
-        continue;
-      }
+    if (sortedRanges.length !== sortedProblems.length) {
+      errors.push(
+        `검출 ${sortedRanges.length}개 ≠ problems ${sortedProblems.length}개 — 매핑 안전하지 않음`,
+      );
+    }
+    const pairCount = Math.min(sortedRanges.length, sortedProblems.length);
+
+    for (let idx = 0; idx < pairCount; idx++) {
+      const range = sortedRanges[idx];
+      const problem = sortedProblems[idx];
       const topic = extractTopic(problem.title);
       const name = buildFileName({
         sourceType: task.sourceType,
@@ -347,7 +426,7 @@ async function processSplitTask(
         certScope: task.certScope,
         session: task.session,
         sessionPart: task.sessionPart,
-        questionNumber: range.questionNumber,
+        questionNumber: problem.questionNumber as number,
         topic,
       });
 
@@ -364,25 +443,25 @@ async function processSplitTask(
         console.log(`   ✔ ${name} → ${uploadedFile.id} (p${range.startPage}-${range.endPage}, ${pageBuf.length} bytes)`);
       }
 
-      // 자체검증 — 업로드된 분할 PDF의 첫 페이지에 "문 제 N." 마커 존재 확인
+      // 자체검증 — 업로드된 분할 PDF에 시그널별 마커가 PDF 내부 번호(range.questionNumber)로 있는지 확인
       let validated = false;
       let validationNote: string | undefined;
       try {
         const verifyBuf = await downloadPdf(writeDrive, uploadedFile.id);
         const verifyTexts = await extractPageTexts(verifyBuf);
-        const firstText = verifyTexts[0] ?? '';
-        const markerRe = new RegExp(`문\\s*제\\s*${range.questionNumber}\\s*\\.`);
-        if (markerRe.test(firstText)) {
+        const fullText = verifyTexts.join(' ');
+        const sigCfg = SIGNALS.find((s) => s.name === detectionSignal);
+        if (sigCfg && sigCfg.validateSplit(fullText, range.questionNumber)) {
           validated = true;
         } else {
-          validationNote = `"문 제 ${range.questionNumber}." 마커가 분할 PDF 첫 페이지에 없음`;
+          validationNote = `${detectionSignal} 시그널 마커(PDF내부 ${range.questionNumber}번)가 분할 PDF에 없음`;
         }
       } catch (verErr) {
         validationNote = `검증 실패: ${(verErr as Error).message}`;
       }
 
       uploaded.push({
-        questionNumber: range.questionNumber,
+        questionNumber: problem.questionNumber as number,
         fileId: uploadedFile.id,
         fileName: uploadedFile.name,
         problemId: problem.id,
@@ -393,14 +472,69 @@ async function processSplitTask(
       });
     }
 
-    return { task, ok: errors.length === 0, uploaded, errors, detectedRanges, pageCount };
+    return { task, ok: errors.length === 0, uploaded, errors, detectedRanges, detectionSignal, pageCount };
   } catch (err) {
     errors.push((err as Error).message);
-    return { task, ok: false, uploaded, errors, detectedRanges, pageCount };
+    return { task, ok: false, uploaded, errors, detectedRanges, detectionSignal, pageCount };
   }
 }
 
 // ===== 진입점 — 첫 테스트: 138회 합숙 1일차 1교시 =====
+
+interface TestSpec {
+  fileId: string;
+  fileName: string;
+  sourceType: '기출' | '합숙' | '모의' | '자체';
+  round: string;
+  certScope: '정보관리' | '컴시응' | '공통';
+  session: string;
+  sessionPart?: string | null;
+  problemFilter: (p: Problem) => boolean;
+}
+
+const TEST_SPECS: TestSpec[] = [
+  {
+    fileId: '1RAstKItBKBU6Rh-egPgiTHiQuUygQSC1',
+    fileName: 'KPC 138회 합숙해설집_1일차_1교시_통합.pdf',
+    sourceType: '합숙',
+    round: '2026.02',
+    certScope: '공통',
+    session: '1일차',
+    sessionPart: '1교시',
+    problemFilter: (p) =>
+      p.sourceType === '합숙' &&
+      p.round === '2026.02' &&
+      p.session === '1일차' &&
+      p.sessionPart === '1교시',
+  },
+  {
+    fileId: '1te6VyAxWJeQF72TBVe705ICSqpl5P606',
+    fileName: '87회-정보관리 문제풀이집-1교시 v2.0.pdf',
+    sourceType: '기출',
+    round: '87',
+    certScope: '정보관리',
+    session: '1',
+    sessionPart: null,
+    problemFilter: (p) =>
+      p.sourceType === '기출' &&
+      p.round === '87' &&
+      p.certScope === '정보관리' &&
+      p.session === '1',
+  },
+  {
+    fileId: '1JeQd7R44XjECeZyOLqgqXETnPTWOBE9u',
+    fileName: '1교시해설-제22회(2010년10월)KPC기술사IMPACT실전모의고사.pdf',
+    sourceType: '모의',
+    round: '2010.10-1',
+    certScope: '공통',
+    session: '1',
+    sessionPart: null,
+    problemFilter: (p) =>
+      p.sourceType === '모의' &&
+      p.round === '2010.10-1' &&
+      p.session === '1',
+  },
+];
 
 async function main() {
   const readDrive = makeReadDrive();
@@ -413,55 +547,53 @@ async function main() {
     fs.readFileSync(path.join(ROOT, 'data', 'problems.json'), 'utf8'),
   ) as Problem[];
 
-  const testProblems = problemsRaw.filter(
-    (p) =>
-      p.sourceType === '합숙' &&
-      p.round === '2026.02' &&
-      p.session === '1일차' &&
-      p.sessionPart === '1교시',
-  );
-  console.log(`테스트 대상 문항: ${testProblems.length}개`);
-  console.log(
-    `샘플: ${testProblems
-      .slice(0, 5)
-      .map((p) => `${p.questionNumber}=${p.title.slice(0, 25)}`)
-      .join(' | ')}`,
-  );
+  const allResults: SplitResult[] = [];
+  for (const spec of TEST_SPECS) {
+    const problems = problemsRaw.filter(spec.problemFilter);
+    console.log(`\n=== ${spec.sourceType} ${spec.round} ${spec.certScope} ${spec.session}${spec.sessionPart ? ` ${spec.sessionPart}` : ''} ===`);
+    console.log(`문항: ${problems.length}개`);
+    if (problems.length === 0) {
+      console.log('⚠ problems.json에 매칭 없음, 스킵');
+      continue;
+    }
 
-  // 138회 합숙 1일차 1교시는 정보관리/컴시응 공통 (sourceType=합숙은 보통 공통 또는 정보관리)
-  const certScope = (testProblems[0]?.certScope ?? '공통') as '정보관리' | '컴시응' | '공통';
+    const task: SplitTask = {
+      fileId: spec.fileId,
+      fileName: spec.fileName,
+      sourceType: spec.sourceType,
+      round: spec.round,
+      certScope: spec.certScope,
+      session: spec.session,
+      sessionPart: spec.sessionPart,
+      problems,
+    };
+    const result = await processSplitTask(readDrive, writeDrive, task, splitRootId);
+    allResults.push(result);
 
-  const task: SplitTask = {
-    fileId: '1RAstKItBKBU6Rh-egPgiTHiQuUygQSC1',
-    fileName: 'KPC 138회 대비 합숙해설집_1일차_1교시_통합.pdf',
-    sourceType: '합숙',
-    round: '2026.02',
-    certScope,
-    session: '1일차',
-    sessionPart: '1교시',
-    problems: testProblems,
-  };
-
-  const result = await processSplitTask(readDrive, writeDrive, task, splitRootId);
-  console.log('\n━━━━━ 결과 ━━━━━');
-  console.log(`성공: ${result.ok}, 페이지: ${result.pageCount}, 검출: ${result.detectedRanges.length}, 업로드: ${result.uploaded.length}`);
-  if (result.errors.length > 0) {
-    console.log('에러:');
-    for (const e of result.errors) console.log(`  - ${e}`);
-  }
-  console.log('\n자체검증:');
-  for (const u of result.uploaded) {
-    const flag = u.validated ? '✔' : '✘';
-    console.log(`  ${flag} ${u.questionNumber}번 → ${u.fileName} (p${u.startPage}-${u.endPage})${u.validationNote ? ` [${u.validationNote}]` : ''}`);
+    console.log(`결과: signal=${result.detectionSignal}, 검출=${result.detectedRanges.length}, 업로드=${result.uploaded.length}, 검증OK=${result.uploaded.filter((u) => u.validated).length}`);
+    if (result.errors.length > 0) {
+      console.log('에러:');
+      for (const e of result.errors) console.log(`  - ${e}`);
+    }
+    console.log('자체검증:');
+    for (const u of result.uploaded) {
+      const flag = u.validated ? '✔' : '✘';
+      console.log(`  ${flag} ${u.questionNumber}번 → p${u.startPage}-${u.endPage} ${u.fileName}${u.validationNote ? ` [${u.validationNote}]` : ''}`);
+    }
   }
 
   fs.mkdirSync(path.join(ROOT, 'tmp-split'), { recursive: true });
   fs.writeFileSync(
     path.join(ROOT, 'tmp-split', 'split-result.json'),
-    JSON.stringify(result, null, 2),
+    JSON.stringify(allResults, null, 2),
     'utf8',
   );
-  console.log('\n✔ tmp-split/split-result.json 저장');
+  console.log(`\n━━━━━ 최종 ━━━━━`);
+  for (const r of allResults) {
+    const valid = r.uploaded.filter((u) => u.validated).length;
+    console.log(`${r.task.sourceType} ${r.task.round}: ${r.detectedRanges.length}검출 / ${r.uploaded.length}업로드 / ${valid}검증OK / signal=${r.detectionSignal}`);
+  }
+  console.log('✔ tmp-split/split-result.json 저장');
 }
 
 main().catch((err) => {
