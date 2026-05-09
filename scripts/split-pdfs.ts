@@ -678,6 +678,83 @@ const TEST_SPECS: TestSpec[] = [
   },
 ];
 
+/**
+ * mappings 전체에서 task 자동 생성. questions 필드가 이미 있으면 스킵 (idempotent).
+ */
+function generateAllSpecsFromMap(map: any): TestSpec[] {
+  const specs: TestSpec[] = [];
+
+  // 기출: map.기출[round]["1_정보관리"|"2_컴시응"|...] = {id, name, questions?}
+  for (const [round, sessions] of Object.entries(map.기출 ?? {})) {
+    for (const [key, entry] of Object.entries(sessions as Record<string, any>)) {
+      if (!entry?.id) continue;
+      if (entry.questions && Object.keys(entry.questions).length > 0) continue;
+      const m = key.match(/^(\d+)_(정보관리|컴시응)$/);
+      if (!m) continue;
+      const session = m[1];
+      const certScope = m[2] as '정보관리' | '컴시응';
+      specs.push({
+        fileId: entry.id,
+        fileName: entry.name ?? `기출_${round}_${key}.pdf`,
+        sourceType: '기출', round, certScope, session, sessionPart: null,
+        problemFilter: (p) =>
+          p.sourceType === '기출' && p.round === round && p.session === session && p.certScope === certScope,
+      });
+    }
+  }
+
+  // 합숙: map.합숙[round]["1일차_1교시"|...] = {id, name, questions?}
+  for (const [round, sessions] of Object.entries(map.합숙 ?? {})) {
+    for (const [key, entry] of Object.entries(sessions as Record<string, any>)) {
+      if (!entry?.id) continue;
+      if (entry.questions && Object.keys(entry.questions).length > 0) continue;
+      const m = key.match(/^(\d+일차)_(\d+교시)$/);
+      if (!m) continue;
+      const session = m[1];
+      const sessionPart = m[2];
+      specs.push({
+        fileId: entry.id,
+        fileName: entry.name ?? `합숙_${round}_${key}.pdf`,
+        sourceType: '합숙', round, certScope: '공통', session, sessionPart,
+        problemFilter: (p) =>
+          p.sourceType === '합숙' && p.round === round && p.session === session && p.sessionPart === sessionPart,
+      });
+    }
+  }
+
+  // 모의: map.모의.KPC[round]["1"|"2"|...] = {id, name, questions?}
+  // PDF 파일명에 종목 명시되면 그 종목으로 좁힘. 모의 round는 problems에서 -N 접미사일 수 있음.
+  for (const [round, sessions] of Object.entries(map.모의?.KPC ?? {})) {
+    for (const [session, entry] of Object.entries(sessions as Record<string, any>)) {
+      if (!entry?.id) continue;
+      if (entry.questions && Object.keys(entry.questions).length > 0) continue;
+      const fname = entry.name ?? '';
+      let certScope: '정보관리' | '컴시응' | '공통' = '공통';
+      if (/컴퓨터시스템응용|컴시응|조직응용/.test(fname)) certScope = '컴시응';
+      else if (/정보관리/.test(fname)) certScope = '정보관리';
+
+      const baseRound = round;
+      specs.push({
+        fileId: entry.id,
+        fileName: entry.name ?? `모의_${round}_${session}.pdf`,
+        sourceType: '모의', round: baseRound, certScope, session, sessionPart: null,
+        problemFilter: (p) => {
+          if (p.sourceType !== '모의') return false;
+          if (p.session !== session) return false;
+          // round: "2010.10" mapping은 problems의 "2010.10-1", "2010.10-2"와도 매칭
+          const pBase = p.round.replace(/-\d+$/, '');
+          if (pBase !== baseRound && p.round !== baseRound) return false;
+          // certScope: 명시된 경우 일치 필요. 공통이면 모든 certScope 허용.
+          if (certScope === '공통') return true;
+          return p.certScope === certScope;
+        },
+      });
+    }
+  }
+
+  return specs;
+}
+
 async function main() {
   const readDrive = makeReadDrive();
   const writeDrive = makeWriteDrive();
@@ -689,16 +766,33 @@ async function main() {
     fs.readFileSync(path.join(ROOT, 'data', 'problems.json'), 'utf8'),
   ) as Problem[];
 
+  // SPLIT_MODE=all: mappings 전체 자동, 그 외: TEST_SPECS
+  const mappingPath = path.join(ROOT, 'data', 'mappings', 'explanation-files.json');
+  const mappingForSpecs = fs.existsSync(mappingPath) ? JSON.parse(fs.readFileSync(mappingPath, 'utf8')) : {};
+  const mode = process.env.SPLIT_MODE ?? 'test';
+  let specsToRun: TestSpec[] = mode === 'all' ? generateAllSpecsFromMap(mappingForSpecs) : TEST_SPECS;
+
+  // BATCH_OFFSET / BATCH_LIMIT 적용 (chunking)
+  const offset = parseInt(process.env.BATCH_OFFSET ?? '0', 10);
+  const limit = parseInt(process.env.BATCH_LIMIT ?? '0', 10);
+  if (limit > 0) {
+    specsToRun = specsToRun.slice(offset, offset + limit);
+  } else if (offset > 0) {
+    specsToRun = specsToRun.slice(offset);
+  }
+  console.log(`모드: ${mode}, 처리할 task: ${specsToRun.length}개 (offset=${offset}, limit=${limit || '∞'})`);
+
+  const concurrency = Math.max(1, parseInt(process.env.CONCURRENCY ?? '5', 10));
   const allResults: SplitResult[] = [];
-  for (const spec of TEST_SPECS) {
+
+  async function runSpec(spec: TestSpec, idx: number): Promise<void> {
     const problems = problemsRaw.filter(spec.problemFilter);
-    console.log(`\n=== ${spec.sourceType} ${spec.round} ${spec.certScope} ${spec.session}${spec.sessionPart ? ` ${spec.sessionPart}` : ''} ===`);
+    console.log(`\n[${idx + 1}/${specsToRun.length}] === ${spec.sourceType} ${spec.round} ${spec.certScope} ${spec.session}${spec.sessionPart ? ` ${spec.sessionPart}` : ''} ===`);
     console.log(`문항: ${problems.length}개`);
     if (problems.length === 0) {
       console.log('⚠ problems.json에 매칭 없음, 스킵');
-      continue;
+      return;
     }
-
     const task: SplitTask = {
       fileId: spec.fileId,
       fileName: spec.fileName,
@@ -709,20 +803,29 @@ async function main() {
       sessionPart: spec.sessionPart,
       problems,
     };
-    const result = await processSplitTask(readDrive, writeDrive, task, splitRootId);
-    allResults.push(result);
-
-    console.log(`결과: signal=${result.detectionSignal}, 검출=${result.detectedRanges.length}, 업로드=${result.uploaded.length}, 검증OK=${result.uploaded.filter((u) => u.validated).length}`);
-    if (result.errors.length > 0) {
-      console.log('에러:');
-      for (const e of result.errors) console.log(`  - ${e}`);
-    }
-    console.log('자체검증:');
-    for (const u of result.uploaded) {
-      const flag = u.validated ? '✔' : '✘';
-      console.log(`  ${flag} ${u.questionNumber}번 → p${u.startPage}-${u.endPage} ${u.fileName}${u.validationNote ? ` [${u.validationNote}]` : ''}`);
+    try {
+      const result = await processSplitTask(readDrive, writeDrive, task, splitRootId);
+      allResults.push(result);
+      const valid = result.uploaded.filter((u) => u.validated).length;
+      console.log(`[${idx + 1}/${specsToRun.length}] 결과: signal=${result.detectionSignal}, 검출=${result.detectedRanges.length}, 업로드=${result.uploaded.length}, 검증OK=${valid}`);
+      if (result.errors.length > 0) {
+        for (const e of result.errors) console.log(`  ⚠ ${e}`);
+      }
+    } catch (err) {
+      console.error(`[${idx + 1}/${specsToRun.length}] 실패: ${(err as Error).message}`);
     }
   }
+
+  // concurrency 병렬 처리 — 큐 패턴
+  let nextIdx = 0;
+  async function worker(): Promise<void> {
+    while (true) {
+      const idx = nextIdx++;
+      if (idx >= specsToRun.length) return;
+      await runSpec(specsToRun[idx], idx);
+    }
+  }
+  await Promise.all(Array.from({ length: concurrency }, () => worker()));
 
   fs.mkdirSync(path.join(ROOT, 'tmp-split'), { recursive: true });
   fs.writeFileSync(
@@ -732,7 +835,6 @@ async function main() {
   );
 
   // explanation-files.json에 questions 필드 머지 (성공한 task만)
-  const mappingPath = path.join(ROOT, 'data', 'mappings', 'explanation-files.json');
   if (fs.existsSync(mappingPath)) {
     const map = JSON.parse(fs.readFileSync(mappingPath, 'utf8')) as any;
     let updated = 0;

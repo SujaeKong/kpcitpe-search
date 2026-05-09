@@ -3,10 +3,27 @@ name: Split PDFs
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: '실행 모드'
+        type: choice
+        options: ['test', 'all']
+        default: 'all'
       overwrite:
         description: '기존 분할 파일 덮어쓰기 (휴지통 이동 후 재업로드)'
         type: boolean
         default: false
+      batch_offset:
+        description: '시작 인덱스 (chunked 실행)'
+        type: string
+        default: '0'
+      batch_limit:
+        description: 'task 수 제한 (0=전체)'
+        type: string
+        default: '0'
+      concurrency:
+        description: '병렬 처리 개수'
+        type: string
+        default: '5'
 
 permissions:
   contents: write
@@ -19,6 +36,7 @@ concurrency:
 jobs:
   split:
     runs-on: ubuntu-latest
+    timeout-minutes: 360
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,7 +61,12 @@ jobs:
           GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
           DRIVE_ROOT_FOLDER_ID: ${{ secrets.DRIVE_ROOT_FOLDER_ID }}
           OVERWRITE: ${{ inputs.overwrite && '1' || '0' }}
+          SPLIT_MODE: ${{ inputs.mode || 'test' }}
+          BATCH_OFFSET: ${{ inputs.batch_offset || '0' }}
+          BATCH_LIMIT: ${{ inputs.batch_limit || '0' }}
+          CONCURRENCY: ${{ inputs.concurrency || '5' }}
         run: npm run split:pdfs
+        timeout-minutes: 350
 
       - name: Upload result artifact
         if: always()
