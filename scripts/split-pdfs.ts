@@ -218,39 +218,45 @@ interface SignalConfig {
 
 const SIGNALS: SignalConfig[] = [
   {
+    // "문 제 N." — 최신 합숙/기출/모의. 두 자리 숫자는 "1 0 ." 처럼 자릿수 사이 공백 변형 가능.
     name: 'munje',
     extractNumbers: (text) => {
       const nums: number[] = [];
-      const re = /문\s*제\s*(\d{1,2})\s*\./g;
+      const re = /문\s*제\s*((?:\d\s*){1,2})\./g;
       let m: RegExpExecArray | null;
       while ((m = re.exec(text)) !== null) {
-        const n = parseInt(m[1], 10);
+        const numStr = m[1].replace(/\s/g, '');
+        const n = parseInt(numStr, 10);
         if (n >= 1 && n <= 30) nums.push(n);
       }
       return nums;
     },
-    validateSplit: (text, n) => new RegExp(`문\\s*제\\s*${n}\\s*\\.`).test(text),
+    validateSplit: (text, n) =>
+      new RegExp(`문\\s*제\\s*${String(n).split('').join('\\s*')}\\s*\\.`).test(text),
   },
   {
+    // "[문제풀이] N." — 87회 옛 기출
     name: 'bracketmunje',
     extractNumbers: (text) => {
       const nums: number[] = [];
-      const re = /\[\s*문\s*제\s*풀\s*이\s*\]\s*(\d{1,2})\s*\./g;
+      const re = /\[\s*문\s*제\s*풀\s*이\s*\]\s*((?:\d\s*){1,2})\./g;
       let m: RegExpExecArray | null;
       while ((m = re.exec(text)) !== null) {
-        const n = parseInt(m[1], 10);
+        const numStr = m[1].replace(/\s/g, '');
+        const n = parseInt(numStr, 10);
         if (n >= 1 && n <= 30) nums.push(n);
       }
       return nums;
     },
-    validateSplit: (text, n) => new RegExp(`\\[\\s*문\\s*제\\s*풀\\s*이\\s*\\]\\s*${n}\\s*\\.`).test(text),
+    validateSplit: (text, n) =>
+      new RegExp(`\\[\\s*문\\s*제\\s*풀\\s*이\\s*\\]\\s*${String(n).split('').join('\\s*')}\\s*\\.`).test(text),
   },
   {
+    // "출제도메인" + 페이지 시작 ") N 제목" — 22회 옛 모의
     name: 'kpc-domain',
     extractNumbers: (text) => {
       if (!/출\s*제\s*도\s*메\s*인/.test(text)) return [];
       const head = text.slice(0, 700);
-      // ") N 제목" 또는 ") N M 제목" (10~19는 1과 0~9 사이 공백 변형 가능)
       const m = head.match(/\)\s*(\d)\s*(\d?)\s+[가-힣A-Za-z]/);
       if (!m) return [];
       const numStr = m[1] + (m[2] || '');
@@ -259,6 +265,46 @@ const SIGNALS: SignalConfig[] = [
       return [];
     },
     validateSplit: (text, n) => /출\s*제\s*도\s*메\s*인/.test(text),
+  },
+  {
+    // "N 교시 M 번 {제목}" — 110회 기출 형식 (1교시 1번, 1교시 2번 ...)
+    name: 'kpc-bunho',
+    extractNumbers: (text) => {
+      const re = /\d+\s*교시\s+((?:\d\s*){1,2})\s*번\s+[가-힣A-Za-z\(]/g;
+      const found = new Set<number>();
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(text)) !== null) {
+        const numStr = m[1].replace(/\s/g, '');
+        const n = parseInt(numStr, 10);
+        if (n >= 1 && n <= 30) found.add(n);
+      }
+      return [...found];
+    },
+    validateSplit: (text, n) =>
+      new RegExp(`\\d+\\s*교시\\s+${String(n).split('').join('\\s*')}\\s*번\\s`).test(text),
+  },
+  {
+    // "N {keyword} 문제" + "도메인" + "출제(배경|의도)" — 합숙 2010년대(114/107회), 모의 2017.07(77회)
+    // 풀이지 첫 페이지: 본문 시작 부근에 "(\d+) (...) 문제" 가 있고 페이지 어딘가에 도메인/출제 키워드.
+    name: 'kpc-mungje',
+    extractNumbers: (text) => {
+      if (!/도\s*메\s*인/.test(text)) return [];
+      if (!/출\s*제\s*(?:배\s*경|의\s*도)/.test(text)) return [];
+      const idx = text.search(/도\s*메\s*인/);
+      const head = text.slice(0, idx);
+      // "(\d+)\s+(keyword 1~6단어, '문제' 안 포함)\s+문제\s+(다른 단어)" 패턴
+      // 마지막 매치를 우선 (페이지 헤더 텍스트보다 본문 후반부 마커 채택)
+      const re = /\b(\d{1,2})\s+(?!교시)([^\s문]\S*(?:\s+[^\s문]\S*){0,5}?)\s+문제\s+\S/g;
+      let last: RegExpExecArray | null = null;
+      let m: RegExpExecArray | null;
+      while ((m = re.exec(head)) !== null) last = m;
+      if (!last) return [];
+      const n = parseInt(last[1], 10);
+      if (n >= 1 && n <= 30) return [n];
+      return [];
+    },
+    validateSplit: (text, n) =>
+      /도\s*메\s*인/.test(text) && new RegExp(`\\b${n}\\s+\\S+(?:\\s+\\S+){0,5}\\s+문제\\s`).test(text),
   },
 ];
 
