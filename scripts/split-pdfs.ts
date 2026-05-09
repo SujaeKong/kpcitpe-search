@@ -284,17 +284,17 @@ const SIGNALS: SignalConfig[] = [
       new RegExp(`\\d+\\s*교시\\s+${String(n).split('').join('\\s*')}\\s*번\\s`).test(text),
   },
   {
-    // "N {keyword} 문제" + "도메인" + "출제(배경|의도)" — 합숙 2010년대(114/107회), 모의 2017.07(77회)
-    // 풀이지 첫 페이지: 본문 시작 부근에 "(\d+) (...) 문제" 가 있고 페이지 어딘가에 도메인/출제 키워드.
+    // "N {keyword} 문제 ... 에 대(하여|해) 설명하시오" + "도메인" + "출제(배경|의도)"
+    // 합숙 2010년대(114/107회), 모의 2017.07(77회) 등 풀이지.
+    // "에 대" 패턴 동반으로 페이지 번호 false positive 차단.
     name: 'kpc-mungje',
     extractNumbers: (text) => {
       if (!/도\s*메\s*인/.test(text)) return [];
       if (!/출\s*제\s*(?:배\s*경|의\s*도)/.test(text)) return [];
       const idx = text.search(/도\s*메\s*인/);
       const head = text.slice(0, idx);
-      // "(\d+)\s+(keyword 1~6단어, '문제' 안 포함)\s+문제\s+(다른 단어)" 패턴
-      // 마지막 매치를 우선 (페이지 헤더 텍스트보다 본문 후반부 마커 채택)
-      const re = /\b(\d{1,2})\s+(?!교시)([^\s문]\S*(?:\s+[^\s문]\S*){0,5}?)\s+문제\s+\S/g;
+      // (N) (제목 1~6 단어) 문제 (제목 1~6 단어) 에 대(하|해)
+      const re = /\b(\d{1,2})\s+(?!교시)([^\s문]\S*(?:\s+[^\s문]\S*){0,5}?)\s+문제\s+\S+(?:\s+\S+){0,5}?\s*에\s*대(?:하|해)/g;
       let last: RegExpExecArray | null = null;
       let m: RegExpExecArray | null;
       while ((m = re.exec(head)) !== null) last = m;
@@ -304,7 +304,8 @@ const SIGNALS: SignalConfig[] = [
       return [];
     },
     validateSplit: (text, n) =>
-      /도\s*메\s*인/.test(text) && new RegExp(`\\b${n}\\s+\\S+(?:\\s+\\S+){0,5}\\s+문제\\s`).test(text),
+      /도\s*메\s*인/.test(text) &&
+      new RegExp(`\\b${n}\\s+\\S+(?:\\s+\\S+){0,5}\\s+문제\\s+\\S+(?:\\s+\\S+){0,5}\\s*에\\s*대(?:하|해)`).test(text),
   },
 ];
 
@@ -457,10 +458,11 @@ async function processSplitTask(
 
     if (sortedRanges.length !== sortedProblems.length) {
       errors.push(
-        `검출 ${sortedRanges.length}개 ≠ problems ${sortedProblems.length}개 — 매핑 안전하지 않음`,
+        `검출 ${sortedRanges.length}개 ≠ problems ${sortedProblems.length}개 — 분할 포기, 통합 PDF fallback`,
       );
+      return { task, ok: false, uploaded, errors, detectedRanges, detectionSignal, pageCount };
     }
-    const pairCount = Math.min(sortedRanges.length, sortedProblems.length);
+    const pairCount = sortedRanges.length;
 
     for (let idx = 0; idx < pairCount; idx++) {
       const range = sortedRanges[idx];
@@ -599,8 +601,8 @@ const TEST_SPECS: TestSpec[] = [
   {
     fileId: '1hT3A2-8EYwMC8LOkXT_H0PQl2RQeuY84',
     fileName: '제77회 컴퓨터시스템응용_해설집_201707_1교시.pdf',
-    sourceType: '모의', round: '2017.07', certScope: '공통', session: '1', sessionPart: null,
-    problemFilter: (p) => p.sourceType === '모의' && p.round === '2017.07' && p.session === '1',
+    sourceType: '모의', round: '2017.07', certScope: '컴시응', session: '1', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '모의' && p.round === '2017.07' && p.session === '1' && p.certScope === '컴시응',
   },
   {
     fileId: '1JeQd7R44XjECeZyOLqgqXETnPTWOBE9u',
