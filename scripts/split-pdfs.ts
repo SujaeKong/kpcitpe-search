@@ -493,46 +493,74 @@ interface TestSpec {
 }
 
 const TEST_SPECS: TestSpec[] = [
+  // 합숙 — 최신/중기/옛
   {
     fileId: '1RAstKItBKBU6Rh-egPgiTHiQuUygQSC1',
     fileName: 'KPC 138회 합숙해설집_1일차_1교시_통합.pdf',
-    sourceType: '합숙',
-    round: '2026.02',
-    certScope: '공통',
-    session: '1일차',
-    sessionPart: '1교시',
-    problemFilter: (p) =>
-      p.sourceType === '합숙' &&
-      p.round === '2026.02' &&
-      p.session === '1일차' &&
-      p.sessionPart === '1교시',
+    sourceType: '합숙', round: '2026.02', certScope: '공통', session: '1일차', sessionPart: '1교시',
+    problemFilter: (p) => p.sourceType === '합숙' && p.round === '2026.02' && p.session === '1일차' && p.sessionPart === '1교시',
+  },
+  {
+    fileId: '1mvn5eLRgLpEXYUUpFKSGaAdpOF3R1LOD',
+    fileName: 'KPC 133회 합숙해설집_1일차_1교시.pdf',
+    sourceType: '합숙', round: '2024.05', certScope: '공통', session: '1일차', sessionPart: '1교시',
+    problemFilter: (p) => p.sourceType === '합숙' && p.round === '2024.05' && p.session === '1일차' && p.sessionPart === '1교시',
+  },
+  {
+    fileId: '1qqD4rNvAV1j8qRKlD7JDxpNmxjBAgXHf',
+    fileName: 'KPC 114회 합숙해설집_1일차_1교시.pdf',
+    sourceType: '합숙', round: '2018.01', certScope: '공통', session: '1일차', sessionPart: '1교시',
+    problemFilter: (p) => p.sourceType === '합숙' && p.round === '2018.01' && p.session === '1일차' && p.sessionPart === '1교시',
+  },
+  {
+    fileId: '1-ZqF6vmQOHR2JzkCnbFHn2ZNUHxEc4DA',
+    fileName: 'KPC 107회 합숙해설집_1일차_1교시.pdf',
+    sourceType: '합숙', round: '2015.07', certScope: '공통', session: '1일차', sessionPart: '1교시',
+    problemFilter: (p) => p.sourceType === '합숙' && p.round === '2015.07' && p.session === '1일차' && p.sessionPart === '1교시',
+  },
+  // 기출 — 최신/중기/옛
+  {
+    fileId: '1znchT2G42naouaiFSwEEp-7jGiGcHQ_G',
+    fileName: '138회_기출풀이_정보관리_1교시.pdf',
+    sourceType: '기출', round: '138', certScope: '정보관리', session: '1', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '기출' && p.round === '138' && p.certScope === '정보관리' && p.session === '1',
+  },
+  {
+    fileId: '1VhbDaiVw_iaWc2GS-QvA7x6zRuXRhmCu',
+    fileName: '제110회 컴퓨터시스템응용기술사 기출풀이 1교시.pdf',
+    sourceType: '기출', round: '110', certScope: '컴시응', session: '1', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '기출' && p.round === '110' && p.certScope === '컴시응' && p.session === '1',
   },
   {
     fileId: '1te6VyAxWJeQF72TBVe705ICSqpl5P606',
     fileName: '87회-정보관리 문제풀이집-1교시 v2.0.pdf',
-    sourceType: '기출',
-    round: '87',
-    certScope: '정보관리',
-    session: '1',
-    sessionPart: null,
-    problemFilter: (p) =>
-      p.sourceType === '기출' &&
-      p.round === '87' &&
-      p.certScope === '정보관리' &&
-      p.session === '1',
+    sourceType: '기출', round: '87', certScope: '정보관리', session: '1', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '기출' && p.round === '87' && p.certScope === '정보관리' && p.session === '1',
+  },
+  // 모의 — 최신/중기/옛
+  {
+    fileId: '1GliUlJHUqohC6F21hdNEIfzBrnR_C2bk',
+    fileName: '제129회_해설집_202604_1교시.pdf',
+    sourceType: '모의', round: '2026.04', certScope: '공통', session: '1', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '모의' && p.round === '2026.04' && p.session === '1',
+  },
+  {
+    fileId: '1fXlCEZz42JZx2bDyYd3vrPx00cNiJpTZ',
+    fileName: '제104회_해설집_202112_1교시.pdf',
+    sourceType: '모의', round: '2021.12', certScope: '공통', session: '1', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '모의' && p.round === '2021.12' && p.session === '1',
+  },
+  {
+    fileId: '1hT3A2-8EYwMC8LOkXT_H0PQl2RQeuY84',
+    fileName: '제77회 컴퓨터시스템응용_해설집_201707_1교시.pdf',
+    sourceType: '모의', round: '2017.07', certScope: '공통', session: '1', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '모의' && p.round === '2017.07' && p.session === '1',
   },
   {
     fileId: '1JeQd7R44XjECeZyOLqgqXETnPTWOBE9u',
-    fileName: '1교시해설-제22회(2010년10월)KPC기술사IMPACT실전모의고사.pdf',
-    sourceType: '모의',
-    round: '2010.10-1',
-    certScope: '공통',
-    session: '1',
-    sessionPart: null,
-    problemFilter: (p) =>
-      p.sourceType === '모의' &&
-      p.round === '2010.10-1' &&
-      p.session === '1',
+    fileName: '1교시해설-제22회(2010년10월)KPC.pdf',
+    sourceType: '모의', round: '2010.10-1', certScope: '공통', session: '1', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '모의' && p.round === '2010.10-1' && p.session === '1',
   },
 ];
 
