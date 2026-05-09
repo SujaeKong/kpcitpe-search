@@ -92,11 +92,8 @@ async function diagnoseSplitFolders(writeDrive: any) {
 }
 
 const SAMPLES = [
-  { label: '합숙 2018.01 1일차 1교시 (검출 실패)', fileId: '1qqD4rNvAV1j8qRKlD7JDxpNmxjBAgXHf' },
-  { label: '합숙 2015.07 1일차 1교시 (검출 실패)', fileId: '1-ZqF6vmQOHR2JzkCnbFHn2ZNUHxEc4DA' },
-  { label: '기출 110회 컴시응 1교시 (검출 실패)', fileId: '1VhbDaiVw_iaWc2GS-QvA7x6zRuXRhmCu' },
-  { label: '모의 2017.07 1교시 (검출 실패)', fileId: '1hT3A2-8EYwMC8LOkXT_H0PQl2RQeuY84' },
-  { label: '모의 2026.04 1교시 (16중 13만 검출)', fileId: '1GliUlJHUqohC6F21hdNEIfzBrnR_C2bk' },
+  { label: '기출 138 컴시응 2교시 (7검출 vs 6문항)', fileId: '1CxygHAGV6U_yrEQgkGJWstDz9qMPHdqP' },
+  { label: '기출 138 컴시응 3교시 (7검출 vs 6문항)', fileId: '14RV-yz8KrAIjTzT00TGVCfHPLmFGpe1X' },
 ];
 
 async function dumpPdfHead(readDrive: any, fileId: string, label: string) {
@@ -108,14 +105,25 @@ async function dumpPdfHead(readDrive: any, fileId: string, label: string) {
     const doc = await pdfjsLib.getDocument({ data, isEvalSupported: false }).promise;
     console.log(`다운로드: ${buf.length} bytes, 페이지: ${doc.numPages}\n`);
 
-    // 풀이부 시작 부분 12페이지만 (5 PDF × ~12p = 60 chunks)
-    const limit = Math.min(12, doc.numPages);
-    for (let i = 1; i <= limit; i++) {
+    // 모든 페이지 — "문 제 N." 매칭 위치 보고 + 페이지 시작 200자
+    for (let i = 1; i <= doc.numPages; i++) {
       const page = await doc.getPage(i);
       const tc = await page.getTextContent();
       const items = tc.items as any[];
       const fullText = items.map((it) => it.str).join(' ');
-      const head = fullText.slice(0, 500).replace(/\s+/g, ' ').trim();
+      const head = fullText.slice(0, 200).replace(/\s+/g, ' ').trim();
+      // "문 제 N." 매칭 위치 모두 추출 (페이지 어디든)
+      const allMunje: Array<{ pos: number; n: number; context: string }> = [];
+      const munjeRe = /문\s*제\s*((?:\d\s*){1,2})\./g;
+      let mm: RegExpExecArray | null;
+      while ((mm = munjeRe.exec(fullText)) !== null) {
+        const numStr = mm[1].replace(/\s/g, '');
+        const n = parseInt(numStr, 10);
+        if (n >= 1 && n <= 30) {
+          const ctx = fullText.slice(Math.max(0, mm.index - 30), mm.index + 80).replace(/\s+/g, ' ');
+          allMunje.push({ pos: mm.index, n, context: ctx });
+        }
+      }
 
       const viewport = page.getViewport({ scale: 1 });
       const W = viewport.width;
@@ -152,11 +160,15 @@ async function dumpPdfHead(readDrive: any, fileId: string, label: string) {
         if (matches.length) hits.push(...matches);
       }
 
-      console.log(`━ p${i} ━`);
+      console.log(`━ p${i} (총 ${doc.numPages}p) ━`);
       console.log(`  상단: ${tops || '(없음)'}`);
-      console.log(`  하단: ${bottoms || '(없음)'}`);
       console.log(`  본문첫: ${head}`);
-      console.log(`  마커: ${hits.length ? hits.slice(0, 10).join(' / ') : '(없음)'}`);
+      if (allMunje.length > 0) {
+        console.log(`  문제마커 ${allMunje.length}개:`);
+        for (const mj of allMunje) {
+          console.log(`    [pos=${mj.pos}] N=${mj.n}: "${mj.context}"`);
+        }
+      }
     }
   } catch (err) {
     console.log(`실패: ${(err as Error).message}`);
