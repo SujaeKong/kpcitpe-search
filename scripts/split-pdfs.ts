@@ -284,28 +284,28 @@ const SIGNALS: SignalConfig[] = [
       new RegExp(`\\d+\\s*교시\\s+${String(n).split('').join('\\s*')}\\s*번\\s`).test(text),
   },
   {
-    // "N {keyword} 문제 ... 에 대(하여|해) 설명하시오" + "도메인" + "출제(배경|의도)"
+    // "N {keyword} 문제" + "도메인" + "출제(배경|의도)"
     // 합숙 2010년대(114/107회), 모의 2017.07(77회) 등 풀이지.
-    // "에 대" 패턴 동반으로 페이지 번호 false positive 차단.
+    // 페이지 번호 매치를 자동 회피: 매칭된 모든 N 중 최소값을 채택 (페이지번호는 통상 더 큼).
     name: 'kpc-mungje',
     extractNumbers: (text) => {
       if (!/도\s*메\s*인/.test(text)) return [];
       if (!/출\s*제\s*(?:배\s*경|의\s*도)/.test(text)) return [];
       const idx = text.search(/도\s*메\s*인/);
       const head = text.slice(0, idx);
-      // (N) (제목 1~6 단어) 문제 (제목 1~6 단어) 에 대(하|해)
-      const re = /\b(\d{1,2})\s+(?!교시)([^\s문]\S*(?:\s+[^\s문]\S*){0,5}?)\s+문제\s+\S+(?:\s+\S+){0,5}?\s*에\s*대(?:하|해)/g;
-      let last: RegExpExecArray | null = null;
+      const re = /\b(\d{1,2})\s+(?!교시)([^\s문]\S*(?:\s+[^\s문]\S*){0,5}?)\s+문제\s/g;
+      const found: number[] = [];
       let m: RegExpExecArray | null;
-      while ((m = re.exec(head)) !== null) last = m;
-      if (!last) return [];
-      const n = parseInt(last[1], 10);
-      if (n >= 1 && n <= 30) return [n];
-      return [];
+      while ((m = re.exec(head)) !== null) {
+        const n = parseInt(m[1], 10);
+        if (n >= 1 && n <= 30) found.push(n);
+      }
+      if (found.length === 0) return [];
+      return [Math.min(...found)];
     },
     validateSplit: (text, n) =>
       /도\s*메\s*인/.test(text) &&
-      new RegExp(`\\b${n}\\s+\\S+(?:\\s+\\S+){0,5}\\s+문제\\s+\\S+(?:\\s+\\S+){0,5}\\s*에\\s*대(?:하|해)`).test(text),
+      new RegExp(`\\b${n}\\s+\\S+(?:\\s+\\S+){0,5}\\s+문제\\s`).test(text),
   },
 ];
 
