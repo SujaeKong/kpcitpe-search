@@ -219,12 +219,14 @@ interface SignalConfig {
 const SIGNALS: SignalConfig[] = [
   {
     // "문 제 N." — 최신 합숙/기출/모의. 두 자리 숫자는 "1 0 ." 처럼 자릿수 사이 공백 변형 가능.
+    // 페이지 시작 부분(첫 400자)만 검색 — 본문 중간 인용("문 제 7.과 유사하다" 등) false positive 차단.
     name: 'munje',
     extractNumbers: (text) => {
+      const head = text.slice(0, 400);
       const nums: number[] = [];
       const re = /문\s*제\s*((?:\d\s*){1,2})\./g;
       let m: RegExpExecArray | null;
-      while ((m = re.exec(text)) !== null) {
+      while ((m = re.exec(head)) !== null) {
         const numStr = m[1].replace(/\s/g, '');
         const n = parseInt(numStr, 10);
         if (n >= 1 && n <= 30) nums.push(n);
