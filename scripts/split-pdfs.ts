@@ -219,7 +219,7 @@ interface SignalConfig {
 const SIGNALS: SignalConfig[] = [
   {
     // "문 제 N." — 최신 합숙/기출/모의. 두 자리 숫자는 "1 0 ." 처럼 자릿수 사이 공백 변형 가능.
-    // 페이지 시작 부분(첫 400자)만 검색 — 본문 중간 인용("문 제 7.과 유사하다" 등) false positive 차단.
+    // 페이지 시작 부분(첫 400자)만 검색 + "문제" 직전 글자가 한글이면 제외("기출문제 2 4." 같은 합성어 false positive 차단).
     name: 'munje',
     extractNumbers: (text) => {
       const head = text.slice(0, 400);
@@ -227,6 +227,8 @@ const SIGNALS: SignalConfig[] = [
       const re = /문\s*제\s*((?:\d\s*){1,2})\./g;
       let m: RegExpExecArray | null;
       while ((m = re.exec(head)) !== null) {
+        const before = m.index > 0 ? head[m.index - 1] : '';
+        if (/[가-힣]/.test(before)) continue;
         const numStr = m[1].replace(/\s/g, '');
         const n = parseInt(numStr, 10);
         if (n >= 1 && n <= 30) nums.push(n);
@@ -234,7 +236,7 @@ const SIGNALS: SignalConfig[] = [
       return nums;
     },
     validateSplit: (text, n) =>
-      new RegExp(`문\\s*제\\s*${String(n).split('').join('\\s*')}\\s*\\.`).test(text),
+      new RegExp(`(?:^|[^가-힣])문\\s*제\\s*${String(n).split('').join('\\s*')}\\s*\\.`).test(text),
   },
   {
     // "[문제풀이] N." — 87회 옛 기출
