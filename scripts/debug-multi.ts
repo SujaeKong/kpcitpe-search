@@ -92,8 +92,9 @@ async function diagnoseSplitFolders(writeDrive: any) {
 }
 
 const SAMPLES = [
-  { label: '기출 138 컴시응 2교시 (7검출 vs 6문항)', fileId: '1CxygHAGV6U_yrEQgkGJWstDz9qMPHdqP' },
-  { label: '기출 138 컴시응 3교시 (7검출 vs 6문항)', fileId: '14RV-yz8KrAIjTzT00TGVCfHPLmFGpe1X' },
+  { label: '기출 89 정관 1교시', fileId: '11NSFBgfXkwqGat7iOEgdZh7rnTMaKIxt' },
+  { label: '기출 90 정관 1교시', fileId: '1YuQBNtoGx-c3rIpOGMRSG1rr_W8HqxDu' },
+  { label: '기출 95 정관 1교시', fileId: '1ZJQmvZ8GIwrh2KFNz3F3qO7-c1OmQXgq' },
 ];
 
 async function dumpPdfHead(readDrive: any, fileId: string, label: string) {
@@ -105,8 +106,9 @@ async function dumpPdfHead(readDrive: any, fileId: string, label: string) {
     const doc = await pdfjsLib.getDocument({ data, isEvalSupported: false }).promise;
     console.log(`다운로드: ${buf.length} bytes, 페이지: ${doc.numPages}\n`);
 
-    // 모든 페이지 — "문 제 N." 매칭 위치 보고 + 페이지 시작 200자
-    for (let i = 1; i <= doc.numPages; i++) {
+    // 처음 12페이지만 (3 PDF * 12p = 36 chunks)
+    const limit = Math.min(12, doc.numPages);
+    for (let i = 1; i <= limit; i++) {
       const page = await doc.getPage(i);
       const tc = await page.getTextContent();
       const items = tc.items as any[];
