@@ -462,6 +462,20 @@ async function processSplitTask(
       );
       return { task, ok: false, uploaded, errors, detectedRanges, detectionSignal, pageCount };
     }
+    // 검출된 문항번호 시퀀스가 1, 2, 3, ... 단조증가 + 갭 없음 (≤ pairCount) — 페이지번호 mis-match 차단
+    const detectedNums = [...detectedRanges]
+      .sort((a, b) => a.questionNumber - b.questionNumber)
+      .map((r) => r.questionNumber);
+    const isValid =
+      detectedNums.length > 0 &&
+      detectedNums[0] === 1 &&
+      detectedNums.every((n, i) => n === i + 1);
+    if (!isValid) {
+      errors.push(
+        `검출 번호 시퀀스 비정상 [${detectedNums.join(',')}] — 페이지번호 mis-match 의심, 분할 포기`,
+      );
+      return { task, ok: false, uploaded, errors, detectedRanges, detectionSignal, pageCount };
+    }
     const pairCount = sortedRanges.length;
 
     for (let idx = 0; idx < pairCount; idx++) {
