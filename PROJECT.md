@@ -40,7 +40,8 @@
 | DB | Cloudflare D1 (`kpcitpe-users`) | id `e4db547e-fb9f-4a42-a095-e259912bc429` |
 | 인증 | Naver OAuth + JWT (HMAC-SHA256, Web Crypto) | 7일 세션 쿠키 |
 | 해설지 | Google Drive (`/preview` iframe) | API로 자동 매핑, lock은 owner-only라 미적용 |
-| 자동화 | GitHub Actions | deploy-cloudflare + sync-drive + rename-hapsuk |
+| 자동화 | GitHub Actions | deploy-cloudflare + sync-drive + split-pdfs + rename-hapsuk |
+| PDF 분할 | pdfjs-dist + pdf-lib + Google OAuth Delegation | 통합 PDF → 문항별 PDF 자동 분할 (사용자 Drive에 업로드) |
 
 ---
 
@@ -62,8 +63,11 @@ kpcitpe-search/
 │   ├── adapters/
 │   │   ├── kpc-xls-adapter.ts    엑셀 → Problem[] 변환
 │   │   └── types.ts
-│   ├── build.ts                  변환 파이프라인
-│   ├── sync-drive-mappings.ts    Drive 매핑 자동화
+│   ├── build.ts                  변환 파이프라인 (분할 PDF 우선 매핑)
+│   ├── sync-drive-mappings.ts    Drive 매핑 자동화 (questions 필드 보존)
+│   ├── split-pdfs.ts             통합 PDF → 문항별 분할 (Phase B)
+│   ├── debug-pdf-text.ts         페이지별 텍스트 덤프 (시그널 분석용)
+│   ├── debug-multi.ts            다중 PDF + _split 폴더 진단
 │   ├── rename-old-hapsuk.ts      합숙 옛 회차 폴더명 변경 (1회성)
 │   └── debug-quality.ts
 ├── src/
@@ -94,7 +98,10 @@ kpcitpe-search/
 │           └── admin/users.csv.ts          CSV 다운로드 (admin)
 ├── .github/workflows/
 │   ├── deploy-cloudflare.yml   엑셀 push → 빌드 → Cloudflare 배포
-│   ├── sync-drive.yml          매일 KST 03:00 + 수동
+│   ├── sync-drive.yml          매일 KST 03:00 + 수동, split-pdfs 자동 트리거
+│   ├── split-pdfs.yml          통합 PDF 문항별 분할 + 자동 매핑 머지
+│   ├── split-debug.yml         페이지별 덤프 (디버그용)
+│   ├── split-diag.yml          다중 PDF 진단 (디버그용)
 │   └── rename-hapsuk.yml       1회성 (이미 실행 완료)
 ├── wrangler.toml
 ├── astro.config.mjs            SITE/BASE 환경변수 의존
@@ -114,6 +121,11 @@ kpcitpe-search/
 - `PUBLIC_SITE_URL` — `https://kpcitpe-search.pages.dev`
 - `ADMIN_EMAILS` — 콤마구분 admin 이메일 (`ksujae22@naver.com`)
 - (D1 `DB`는 wrangler.toml binding으로 주입)
+
+**OAuth Delegation (사용자 Drive 쓰기용 — Phase B)**:
+- `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REFRESH_TOKEN`
+- 이유: Service Account는 storage quota=0이라 파일 업로드 불가. 사용자(`ksujae@gmail.com`) OAuth로 사용자 Drive 15GB 사용.
+- scope: `drive.file` (앱이 만든 파일만 접근)
 
 ### GitHub Secrets
 - `CLOUDFLARE_API_TOKEN` — Cloudflare 배포용
@@ -163,7 +175,18 @@ deploy-cloudflare.yml                sync-drive.yml (매일 03:00 + 수동)
 1. Drive `01. 기출문제 & 모의고사/{카테고리}` 진입
 2. 신규 회차 폴더 생성 (예: `제139회 기출문제 해설집`, `139회 (2026-05)`, `제130회(26년07월)KPC기술사 모의고사 해설집`)
 3. 폴더 안에 PDF 드래그
-4. **끝** — 다음 KST 03:00 자동 sync에서 매핑 (Actions 탭 수동 trigger 가능)
+4. **끝** — 다음 KST 03:00 자동 sync에서 매핑 → split-pdfs가 문항별 분할 → 사이트 자동 배포 (Actions 탭 수동 trigger 가능)
+
+자동 흐름:
+```
+sync-drive (매핑 갱신, commit)
+   ↓ 변경 감지
+split-pdfs (문항별 분할 + questions 매핑 머지, commit)
+   ↓
+deploy-cloudflare (build:data + 사이트 빌드 + Pages 배포)
+```
+
+분할이 신규 PDF 형식이라 실패해도 통합 PDF로 fallback (사이트 동작에 영향 없음). 실패 패턴은 디버그 워크플로로 분석 후 시그널 추가.
 
 **B. 통합 엑셀 (검색 데이터)** — GitHub 웹에서:
 1. https://github.com/SujaeKong/kpcitpe-search → `data/source/kpc/`
@@ -251,6 +274,26 @@ wrangler d1 execute kpcitpe-users --command "SELECT * FROM users LIMIT 5" --remo
 모의:  {academy}.{round}.{session}        예: 'KPC' → '2026.04' → '1'
 ```
 
+각 entry 구조:
+```typescript
+interface ExplanationEntry {
+  id: string;          // 통합 PDF Drive fileId (fallback)
+  name?: string;
+  questions?: {        // Phase B: 문항별 분할 PDF (있으면 우선)
+    [questionNumber: string]: {
+      id: string;      // 분할 PDF fileId (사용자 Drive `_split/` 폴더)
+      name: string;
+    };
+  };
+}
+```
+
+build.ts의 `applyExplanationMap`이 problem 별로:
+1. `questions[problem.questionNumber]` 있으면 그 fileId 사용
+2. 없으면 entry.id (통합 PDF) 사용
+
+모의 round는 -N suffix(`2010.10-1`) variant도 base round(`2010.10`)로 자동 fallback.
+
 ### 7.3 D1 users 테이블
 
 ```sql
@@ -280,6 +323,8 @@ CREATE TABLE users (
 
 ## 8. 매핑 커버리지 (현재)
 
+### 8.1 통합 PDF 매핑
+
 ```
 기출   : 279건 매핑 (회차 기반, 47회차 중 ~30+회차)
 합숙   : 216건 (옛 회차 매핑 후 +30)
@@ -295,6 +340,27 @@ CREATE TABLE users (
 gh run view <RUN_ID> --log | grep '매칭 0/'
 ```
 
+### 8.2 문항별 분할 PDF (Phase B)
+
+매핑 JSON의 각 entry에 `questions` 필드(문항번호 → 분할 PDF id) 자동 추가.
+
+```json
+"기출": {
+  "138": {
+    "1_정보관리": {
+      "id": "...",       // 통합 PDF (fallback)
+      "name": "...",
+      "questions": {     // 분할 PDF (있으면 우선 사용)
+        "1": { "id": "...", "name": "기출_138_정보관리_1_01_..." },
+        "2": { ... }
+      }
+    }
+  }
+}
+```
+
+build.ts가 `problem.questionNumber`로 분할 PDF 우선 매핑, 없으면 통합 PDF fallback.
+
 ---
 
 ## 9. GitHub Actions 워크플로우
@@ -306,10 +372,23 @@ gh run view <RUN_ID> --log | grep '매칭 0/'
 
 ### 9.2 sync-drive.yml
 - **트리거**: 매일 KST 03:00 / 수동
-- **동작**: Drive sync (매핑) → 변경 시 commit (pull --rebase 자동 retry) → deploy-cloudflare 트리거
+- **동작**: Drive sync (매핑) → 변경 시 commit → **split-pdfs 트리거** → deploy-cloudflare 트리거
 - **소요**: 1~3분
 
-### 9.3 rename-hapsuk.yml (1회성)
+### 9.3 split-pdfs.yml (Phase B)
+- **트리거**: sync-drive 변경 후 자동 / 수동
+- **동작**: explanation-files.json의 entry 별로 통합 PDF를 문항별 분할 → 사용자 Drive(`_split/`)에 업로드 → 자체검증 → 매핑 JSON에 `questions` 필드 머지 → 자동 commit
+- **모드**:
+  - `test`: TEST_SPECS 19개 회차만 (디버그용)
+  - `all`: explanation-files.json 전체 entry (기본, ~895 task). idempotent — 이미 `questions` 있으면 자동 스킵
+- **옵션**: `overwrite` (기존 분할 파일 휴지통 이동 후 재업로드), `batch_offset/batch_limit` (chunked 실행), `concurrency` (병렬, 기본 5)
+- **소요**: 전체 ~1.5~3시간 (concurrency=7 기준), idempotent라 두 번째부터는 신규 entry만
+
+### 9.4 split-debug.yml / split-diag.yml
+- **트리거**: 수동
+- **동작**: 페이지별 텍스트/좌표/마커 후보 덤프. 새 PDF 형식 만났을 때 시그널 추가용 분석 도구.
+
+### 9.5 rename-hapsuk.yml (1회성)
 - 합숙 옛 회차 폴더명에 (YYYY-MM) 추가하는 1회성 스크립트. 이미 실행 완료. 향후 필요 시 재사용.
 
 ---
@@ -359,14 +438,74 @@ gh run view <RUN_ID> --log | grep '매칭 0/'
 - ADMIN_EMAILS 화이트리스트
 - 미인증/비-admin/admin 3단계 UX
 
+### Phase B: 문항별 PDF 분할 (Day 4)
+
+**목표**: 통합 PDF(예: 한 교시 16문항 통째로) → 문항별 분할 PDF로 자동 변환. 사이트에서 카드 클릭 시 그 문항 풀이만 열림.
+
+**핵심 결정**:
+- **Service Account vs OAuth Delegation**: SA는 storage quota=0이라 업로드 불가. OAuth Delegation으로 사용자(`ksujae@gmail.com`) Drive 15GB 사용 (R2/카드 결제 회피).
+- **읽기/쓰기 인증 분리**: 통합 PDF 다운로드는 SA, 분할 PDF 업로드는 OAuth.
+- **`drive.file` scope**: 앱이 만든 파일만 접근 (least privilege).
+
+**다중 시그널 자동 검출**:
+
+| 시그널 | 패턴 | 적용 회차 예 |
+|---|---|---|
+| `munje` | `문 제 N.` (페이지 첫 400자, 직전 글자가 한글이면 제외) | 합숙 130회+, 기출 130회+, 모의 100회+ |
+| `bracketmunje` | `[문제풀이] N.` | 87회 등 옛 기출 |
+| `kpc-domain` | `출제도메인` + 페이지 시작 `") N 제목"` | 22회 등 옛 모의 |
+| `kpc-bunho` | `N 교시 M 번 {제목}` | 110회 등 기출 |
+| `kpc-mungje` | `N {keyword} 문제` + `도메인` + `출제(배경\|의도)` | 일부 합숙/모의 (성공률 불안정) |
+| `kpc-rights-num` | `rights reserved {pageNum} ... {questionNum} {title}` + `출제도메인` | 89~115회 KPC Convergence 형식 |
+
+시그널 우선순위로 시도, 첫 번째로 ≥3 문항 검출되는 것 채택. 두 자리 숫자 자릿수 사이 공백 변형 지원(`1 0 .` → 10).
+
+**3중 안전 가드** (모두 통과해야 분할 적용):
+1. 검출 ≥ 3 (signal=none이면 fallback)
+2. 검출 갯수 == problems 갯수 (다르면 매핑 안전 X → fallback)
+3. 검출 번호 시퀀스가 1, 2, ..., N 연속 (페이지번호 mis-match 차단)
+
+→ 가드 실패 시 `questions` 필드 미생성, 사이트는 통합 PDF 그대로 사용.
+
+**자체검증**: 업로드된 분할 PDF를 다시 다운로드해 시그널별 마커가 존재하는지 재확인. 검증 실패 시 `validated: false` 표기.
+
+**PDF 내부번호 ↔ problems 번호 분리**:
+- 87회 1교시 정관: PDF 내부 1번 = problems의 14번(OCL). 검출 순서 ↔ problems의 questionNumber 정렬 순서 1:1 매핑.
+- 파일명/매핑 키는 problems의 번호, 자체검증은 PDF 내부 번호 사용.
+
+**자동 모드 + 병렬 + chunking**:
+- `SPLIT_MODE=all`: mappings 전체 entry → spec 자동 생성, 이미 `questions` 있으면 스킵 (idempotent).
+- `CONCURRENCY=N`: N개 task 동시 처리 (Drive API rate limit 고려, 기본 5~7).
+- `BATCH_OFFSET/BATCH_LIMIT`: chunked 실행 (timeout 회피).
+
+**파일명 규칙**:
+```
+{종류}_{회차}_{종목}_{교시}_{번호padded}_{핵심키워드}.pdf
+예) 합숙_2026.02_공통_1일차_1교시_01_패스키Passkey에_대해_설명하시오.pdf
+    기출_87_정보관리_1_14_OCL.pdf  (PDF 내부 1번이 problems 14번)
+```
+
+**자동 워크플로 통합**:
+- sync-drive.yml이 매핑 변경 감지 시 split-pdfs.yml 자동 트리거 → split-pdfs가 매핑 JSON 업데이트 + 자동 commit/push
+- sync-drive-mappings.ts는 `questions` 필드 보존 (sync가 split이 추가한 정보를 날리지 않게)
+
+**검증 결과 (19개 샘플 task, 6개 시그널)**: 16/19 분할 성공 (총 211문항), 3/19 fallback (모두 옛 형식 PDF: 합숙 114/107회, 모의 77회).
+
+**알려진 한계**:
+- 일부 옛 합숙(2010년대) PDF는 풀이지 형식 불규칙 → fallback (통합 PDF로 정상 표시)
+- 가드가 까다로워서 문항이 많은 일부 회차(예: 13개 중 12개만 검출)도 fallback. 안전성 우선.
+
 ---
 
 ## 11. 향후 작업 후보
 
-### Phase B — PDF 보호 (선택, 도메인 불필요)
+### Phase B-2 — 옛 회차 분할 정밀화 (선택)
+2010년대 합숙/일부 기출의 풀이 형식 추가 시그널 또는 OCR 기반 분할로 분할률 향상. 현재 fallback이라 사용자 경험 영향 없음.
+
+### Phase C — PDF 보호 (선택, 도메인 불필요)
 Drive PDF 비공개 + Workers proxy. 현재는 페이지 측 차단만이라 URL 우회 가능. 진정 차단 필요 시 1주.
 
-### Phase C — 마케팅 메일 발송 (도메인 필요, 연 1.5만원)
+### Phase D — 마케팅 메일 발송 (도메인 필요, 연 1.5만원)
 - DB 동의자 추출 (admin CSV로 가능)
 - Brevo / Resend SDK 통합
 - 자체 도메인 + SPF/DKIM
@@ -397,6 +536,24 @@ npm run preview
 gh workflow run sync-drive.yml --ref main
 gh run list --workflow=sync-drive.yml --limit 3
 gh run view <RUN_ID> --log
+```
+
+### PDF 분할 (Phase B)
+```bash
+# 19개 샘플로 테스트 (idempotent)
+gh workflow run split-pdfs.yml --ref main -f mode=test -f overwrite=false
+
+# 전체 회차 자동 (시간 오래 걸림 — 1.5~3시간)
+gh workflow run split-pdfs.yml --ref main \
+  -f mode=all -f overwrite=false -f concurrency=7
+
+# 잘못 분할된 회차 재처리 (휴지통 이동 후 재업로드)
+gh workflow run split-pdfs.yml --ref main \
+  -f mode=test -f overwrite=true
+
+# 디버그: 새 PDF 형식 분석
+gh workflow run split-diag.yml --ref main
+gh run view <RUN_ID> --log | grep "Diagnose" | sed 's/^[^Z]*Z //'
 ```
 
 ### 배포 상태
