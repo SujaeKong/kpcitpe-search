@@ -678,6 +678,49 @@ async function main() {
     JSON.stringify(allResults, null, 2),
     'utf8',
   );
+
+  // explanation-files.json에 questions 필드 머지 (성공한 task만)
+  const mappingPath = path.join(ROOT, 'data', 'mappings', 'explanation-files.json');
+  if (fs.existsSync(mappingPath)) {
+    const map = JSON.parse(fs.readFileSync(mappingPath, 'utf8')) as any;
+    let updated = 0;
+    for (const r of allResults) {
+      if (!r.ok || r.uploaded.length === 0) continue;
+      const t = r.task;
+      const questionsField: Record<string, { id: string; name: string }> = {};
+      for (const u of r.uploaded) {
+        if (u.validated) {
+          questionsField[String(u.questionNumber)] = { id: u.fileId, name: u.fileName };
+        }
+      }
+      if (Object.keys(questionsField).length === 0) continue;
+
+      // 매핑 위치 찾기
+      let entry: any;
+      if (t.sourceType === '기출') {
+        entry = map.기출?.[t.round]?.[`${t.session}_${t.certScope}`];
+      } else if (t.sourceType === '합숙') {
+        const key = t.sessionPart ? `${t.session}_${t.sessionPart}` : t.session;
+        entry = map.합숙?.[t.round]?.[key];
+      } else if (t.sourceType === '모의') {
+        // round가 "2010.10-1"이면 mappings는 "2010.10" 형태일 수 있음. 둘 다 시도.
+        const baseRound = t.round.replace(/-\d+$/, '');
+        entry = map.모의?.['KPC']?.[t.round]?.[t.session] ?? map.모의?.['KPC']?.[baseRound]?.[t.session];
+      }
+      if (entry) {
+        entry.questions = questionsField;
+        updated++;
+        console.log(`📌 매핑 업데이트: ${t.sourceType}/${t.round}/${t.session} (${Object.keys(questionsField).length}개 분할)`);
+      } else {
+        console.log(`⚠ 매핑 위치 못 찾음: ${t.sourceType}/${t.round}/${t.session}`);
+      }
+    }
+    if (updated > 0) {
+      map.$generatedAt = new Date().toISOString();
+      fs.writeFileSync(mappingPath, JSON.stringify(map, null, 2) + '\n', 'utf8');
+      console.log(`\n✔ explanation-files.json에 ${updated}개 회차 분할 정보 머지`);
+    }
+  }
   console.log(`\n━━━━━ 최종 ━━━━━`);
   for (const r of allResults) {
     const valid = r.uploaded.filter((u) => u.validated).length;

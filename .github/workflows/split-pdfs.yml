@@ -9,8 +9,8 @@ on:
         default: false
 
 permissions:
-  contents: read
-  actions: read
+  contents: write
+  actions: write
 
 concurrency:
   group: split-pdfs
@@ -52,3 +52,21 @@ jobs:
           name: split-result
           path: tmp-split/
           if-no-files-found: ignore
+
+      - name: Commit & push mapping changes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if git diff --quiet -- data/mappings/explanation-files.json; then
+            echo "매핑 변경 없음"
+          else
+            git config user.name "kpc-bot"
+            git config user.email "kpc-bot@users.noreply.github.com"
+            git add data/mappings/explanation-files.json
+            git commit -m "chore: split PDFs questions 매핑 갱신"
+            for i in 1 2 3; do
+              if git push; then break; fi
+              echo "push 실패, pull --rebase 후 재시도 ($i/3)"
+              git pull --rebase origin main
+            done
+          fi

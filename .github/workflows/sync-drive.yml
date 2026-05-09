@@ -61,6 +61,12 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Trigger split-pdfs (if changed)
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run split-pdfs.yml --ref main -f overwrite=false
+
       - name: Trigger build & deploy (if changed)
         if: steps.commit.outputs.changed == 'true'
         env:

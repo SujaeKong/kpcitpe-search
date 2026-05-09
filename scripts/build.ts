@@ -82,6 +82,7 @@ async function runAdapter(
 interface ExplanationEntry {
   id: string;
   name?: string;
+  questions?: Record<string, { id: string; name?: string }>;
 }
 
 interface ExplanationMap {
@@ -129,13 +130,27 @@ function applyExplanationMap(problems: Problem[], map: ExplanationMap): number {
       const key = p.sessionPart ? `${p.session}_${p.sessionPart}` : p.session;
       entry = map.합숙?.[p.round]?.[key];
     } else if (p.sourceType === '모의' && p.academy) {
-      entry = map.모의?.[p.academy]?.[p.round]?.[p.session];
+      // round가 "2010.10-1" 형태면 base round("2010.10")로 fallback (mappings는 base round 단위)
+      const baseRound = p.round.replace(/-\d+$/, '');
+      entry =
+        map.모의?.[p.academy]?.[p.round]?.[p.session] ??
+        map.모의?.[p.academy]?.[baseRound]?.[p.session];
     } else if (p.sourceType === '자체' && p.academy) {
-      entry = map.자체?.[p.academy]?.[p.round]?.[p.session];
+      const baseRound = p.round.replace(/-\d+$/, '');
+      entry =
+        map.자체?.[p.academy]?.[p.round]?.[p.session] ??
+        map.자체?.[p.academy]?.[baseRound]?.[p.session];
     }
     if (entry) {
-      p.explanationFileId = entry.id;
-      p.explanationFileName = entry.name ?? null;
+      // 분할 PDF가 있으면 그 fileId 우선 사용, 없으면 통합 PDF로 fallback
+      const perQ = p.questionNumber != null ? entry.questions?.[String(p.questionNumber)] : undefined;
+      if (perQ) {
+        p.explanationFileId = perQ.id;
+        p.explanationFileName = perQ.name ?? null;
+      } else {
+        p.explanationFileId = entry.id;
+        p.explanationFileName = entry.name ?? null;
+      }
       matched++;
     }
   }
