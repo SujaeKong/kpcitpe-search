@@ -256,6 +256,24 @@ const SIGNALS: SignalConfig[] = [
       new RegExp(`\\[\\s*문\\s*제\\s*풀\\s*이\\s*\\]\\s*${String(n).split('').join('\\s*')}\\s*\\.`).test(text),
   },
   {
+    // "rights reserved {pageNum} ... {questionNum} {title}" + "출제도메인"
+    // 89회/90회/95회 등 KPC Convergence 형식 풀이지.
+    name: 'kpc-rights-num',
+    extractNumbers: (text) => {
+      if (!/출\s*제\s*도\s*메\s*인/.test(text)) return [];
+      const head = text.slice(0, 500);
+      // rights reserved {pageNum} (선택적 \S+ 단어들) {questionNum} {한글/영문 키워드}
+      const m = head.match(/rights\s+reserved\s+\d+\s+(?:\S+\s+){0,3}?(\d{1,2})\s+[가-힣A-Z]/);
+      if (m) {
+        const n = parseInt(m[1], 10);
+        if (n >= 1 && n <= 30) return [n];
+      }
+      return [];
+    },
+    validateSplit: (text, n) =>
+      new RegExp(`rights\\s+reserved\\s+\\d+\\s+(?:\\S+\\s+){0,3}?${n}\\s+[가-힣A-Z]`).test(text),
+  },
+  {
     // "출제도메인" + 페이지 시작 ") N 제목" — 22회 옛 모의
     name: 'kpc-domain',
     extractNumbers: (text) => {
