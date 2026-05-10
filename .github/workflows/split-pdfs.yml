@@ -77,10 +77,12 @@ jobs:
           if-no-files-found: ignore
 
       - name: Commit & push mapping changes
+        id: commit
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if git diff --quiet -- data/mappings/explanation-files.json; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             echo "매핑 변경 없음"
           else
             git config user.name "kpc-bot"
@@ -92,4 +94,13 @@ jobs:
               echo "push 실패, pull --rebase 후 재시도 ($i/3)"
               git pull --rebase origin main
             done
+            echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
+
+      - name: Trigger deploy (if changed)
+        # GITHUB_TOKEN으로 push된 커밋은 deploy-cloudflare.yml의 push 트리거를
+        # 발화시키지 않으므로 명시적으로 workflow_dispatch를 호출한다.
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run deploy-cloudflare.yml --ref main
