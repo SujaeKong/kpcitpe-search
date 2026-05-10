@@ -275,12 +275,12 @@ function parseKichul(name: string): {
     if (cert) return { session: m[2], certScope: cert, isBowan };
   }
 
-  // 패턴 H: "관리_NN_S_q_해설지" — 131 (문항 단위 PDF, 첫 발견 키만 사용)
-  m = name.match(/^(\S+?)_\d+_(\d+)_\d+/);
-  if (m) {
-    const cert = inferCert(m[1]);
-    if (cert) return { session: m[2], certScope: cert, isBowan };
-  }
+  // 회차 폴더 안의 '개별파일/' 같은 sub-folder에 들어있는 수동 분할본
+  // (예: '관리_130_1_13_해설지.pdf' = 1교시 13번 문항 단일 PDF)은
+  // round-level entry로 등록하지 않는다. 같은 회차의 통합본
+  // ('130회_기출풀이_정보관리 1교시.pdf')이 일반 fallback으로 잡혀야
+  // splitter가 통합본을 받아 문항별로 분할할 수 있다.
+  // 문항 단위 PDF는 'N교시' 글자가 없어 아래 일반 fallback에서 자동 무시됨.
 
   // ===== 일반 매처 (fallback) =====
   const sessionMatch = name.match(/(\d+)\s*교시/);
