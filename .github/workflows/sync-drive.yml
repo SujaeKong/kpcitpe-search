@@ -67,4 +67,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh workflow run split-pdfs.yml --ref main -f overwrite=false
 
-      # 배포(deploy-cloudflare.yml)는 main push로 자동 트리거되므로 별도 호출 불필요.
+      - name: Trigger deploy (if changed)
+        # GITHUB_TOKEN으로 push된 커밋은 deploy-cloudflare.yml의 push 트리거를
+        # 발화시키지 않으므로(GitHub Actions 무한 루프 방지 정책), 명시적으로
+        # workflow_dispatch를 호출해 배포를 트리거한다.
+        if: steps.commit.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run deploy-cloudflare.yml --ref main
