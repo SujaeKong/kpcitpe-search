@@ -244,11 +244,37 @@ function strOrNull(v: unknown): string | null {
 }
 
 /**
+ * 기출 회차 → 시험 연월 자동 산출.
+ *
+ * 정보관리/컴시응 기술사는 1년 3회(2/5/8월) 시행. anchor 1개 + 산술로
+ * 모든 회차의 시점 도출 — 신규 회차 추가 시 매핑 갱신 불필요.
+ *
+ * anchor: 138회 = 2026-02.
+ * 회차 N → year = 2026 + floor((N-138)/3), month = [2,5,8][((N-138) mod 3 + 3) mod 3]
+ *
+ * 옛 회차(예: 80회대)는 실제 시행이 1년 4회였을 가능성이 있어 절대 연월은
+ * 약간 어긋날 수 있지만 회차 N과 N+1의 상대 순서는 항상 단조 증가하므로
+ * 정렬 목적으로는 정확함.
+ */
+function kichulRoundOrder(n: number): number {
+  const ANCHOR_ROUND = 138;
+  const ANCHOR_YEAR = 2026;
+  const MONTHS = [2, 5, 8] as const;
+  const diff = n - ANCHOR_ROUND;
+  const year = ANCHOR_YEAR + Math.floor(diff / 3);
+  const month = MONTHS[((diff % 3) + 3) % 3];
+  // YYYYMMSS — 모의/합숙과 동일 스케일 (SS=00)
+  return year * 10000 + month * 100;
+}
+
+/**
  * §2.4 회차 정규화.
- * - 기출: '138', '138회' → round='138', label='138회', order=138
- * - 모의: '모의_2026.04' → round='2026.04', label='모의_2026.04', order=202604
- * - 합숙: '합숙_2026.02' → round='2026.02', label='합숙_2026.02', order=202602
+ * - 기출: '138', '138회' → round='138', label='138회', order=YYYYMMSS (시험 연월)
+ * - 모의: '모의_2026.04' → round='2026.04', label='모의_2026.04', order=20260400
+ * - 합숙: '합숙_2026.02' → round='2026.02', label='합숙_2026.02', order=20260200
  *   (간혹 '모의2026.04'/'합숙2026.02'처럼 underscore 누락 가능 — 둘 다 허용)
+ *
+ * 세 종류 모두 roundOrder는 동일 스케일(YYYYMMSS)이라 시간순 정렬 비교 가능.
  */
 function normalizeRound(
   raw: string | null,
@@ -263,7 +289,7 @@ function normalizeRound(
     return {
       round,
       roundLabel: `${round}회`,
-      roundOrder: parseInt(round, 10),
+      roundOrder: kichulRoundOrder(parseInt(round, 10)),
     };
   }
 
