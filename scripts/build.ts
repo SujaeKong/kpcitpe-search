@@ -59,13 +59,52 @@ function listFiles(dir: string, exts: string[]): string[] {
     .sort(); // 파일명 기준 정렬 (신규 회차 추가 시 결정적 순서)
 }
 
+/**
+ * 같은 베이스명을 공유하는 누적본 버전 파일 중 가장 높은 버전만 채택.
+ * 패턴: `<base>_v<digits>.<ext>` (예: `KPC_기술사문제검색_v260516.xls`)
+ * KPC 엑셀은 누적본이라 옛 버전을 같이 두면 데이터가 2배로 부풀므로 스킵.
+ * 버전 suffix 없는 파일은 그대로 포함.
+ */
+function pickLatestVersions(files: string[]): { picked: string[]; skipped: string[] } {
+  const VERSIONED = /^(.+?)_v(\d+)\.(xls|xlsx)$/i;
+  const groups = new Map<string, { file: string; version: number }>();
+  const unversioned: string[] = [];
+  const skipped: string[] = [];
+
+  for (const f of files) {
+    const base = path.basename(f);
+    const m = base.match(VERSIONED);
+    if (!m) {
+      unversioned.push(f);
+      continue;
+    }
+    const [, name, ver] = m;
+    const version = Number(ver);
+    const prev = groups.get(name);
+    if (!prev || version > prev.version) {
+      if (prev) skipped.push(prev.file);
+      groups.set(name, { file: f, version });
+    } else {
+      skipped.push(f);
+    }
+  }
+
+  const picked = [...unversioned, ...Array.from(groups.values()).map((g) => g.file)].sort();
+  skipped.sort();
+  return { picked, skipped };
+}
+
 async function runAdapter(
   cfg: SourceConfig,
 ): Promise<{ files: string[]; results: AdapterResult[] }> {
-  const files = listFiles(cfg.dir, cfg.extensions);
-  if (files.length === 0) {
+  const allFiles = listFiles(cfg.dir, cfg.extensions);
+  if (allFiles.length === 0) {
     console.log(`  (소스 없음 — 스킵: ${path.relative(ROOT, cfg.dir)})`);
     return { files: [], results: [] };
+  }
+  const { picked: files, skipped } = pickLatestVersions(allFiles);
+  for (const s of skipped) {
+    console.log(`  (옛 버전 — 스킵: ${path.relative(ROOT, s)})`);
   }
   const results: AdapterResult[] = [];
   for (const f of files) {

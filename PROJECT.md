@@ -190,10 +190,11 @@ deploy-cloudflare (build:data + 사이트 빌드 + Pages 배포)
 
 **B. 통합 엑셀 (검색 데이터)** — GitHub 웹에서:
 1. https://github.com/SujaeKong/kpcitpe-search → `data/source/kpc/`
-2. **Add file → Upload files** → 새 엑셀 드래그
-3. (옵션) 옛 파일 휴지통
-4. commit 메시지 한 줄 (예: `data: KPC v260712`)
-5. Commit changes → 1~2분 후 자동 배포
+2. **Add file → Upload files** → 새 엑셀 드래그 (파일명 `KPC_기술사문제검색_v{YYMMDD}.xls`)
+3. commit 메시지 한 줄 (예: `data: KPC v260712`)
+4. Commit changes → 1~2분 후 자동 배포
+
+옛 버전 파일은 **삭제할 필요 없음** — `build.ts`가 같은 베이스명을 가진 `_v{날짜}` 파일 중 가장 높은 버전만 자동 채택하고 나머지는 스킵 로그를 남김 (`scripts/build.ts:pickLatestVersions`). 이력 보존용으로 남겨두면 됨.
 
 ### 6.2 관리자 페이지 사용
 - https://kpcitpe-search.pages.dev/admin
