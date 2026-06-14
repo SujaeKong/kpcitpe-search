@@ -48,8 +48,9 @@ export default function ExplanationModal({ open, onClose, problem }: Props) {
   if (!open || !problem.explanationFileId) return null;
 
   const fileId = problem.explanationFileId;
-  // /preview는 임베드 뷰 — Drive UI(다운로드/인쇄 버튼) 없이 PDF만 노출
-  const previewUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+  // 서버 프록시 경유 — 로그인 + 수신동의 검증 후에만 PDF 스트리밍 (Drive 파일은 비공개)
+  const baseUrl = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
+  const previewUrl = `${baseUrl}/api/explanation?fileId=${encodeURIComponent(fileId)}`;
   const externalUrl = previewUrl;
 
   const sessionLabel =
@@ -122,8 +123,8 @@ export default function ExplanationModal({ open, onClose, problem }: Props) {
                 해설지를 페이지 안에 표시할 수 없습니다
               </p>
               <p className="mt-2 max-w-md text-xs text-gray-600">
-                Google Drive 공유 권한이 "링크 있는 모든 사용자 - 보기"로 설정되어
-                있는지 확인해 주세요. 또는 브라우저의 third-party 쿠키 차단으로 인해 임베드가 막힐 수 있습니다.
+                일시적인 오류이거나 브라우저가 PDF 임베드를 막고 있을 수 있습니다.
+                아래 "새 탭에서 열기"로 다시 시도해 주세요.
               </p>
               <div className="mt-4 flex gap-2">
                 <a

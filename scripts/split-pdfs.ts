@@ -136,13 +136,9 @@ async function uploadPdf(
   return { id: created.data.id!, name: created.data.name! };
 }
 
-// 누구나 링크 보면 열람 가능하게 설정 (사이트에서 iframe 열기용)
-async function makePublic(drive: any, fileId: string): Promise<void> {
-  await drive.permissions.create({
-    fileId,
-    requestBody: { role: 'reader', type: 'anyone' },
-  });
-}
+// 해설지 PDF는 비공개 유지. 사이트는 /api/explanation 프록시(로그인+수신동의 검증)를
+// 통해서만 열람 가능하므로 'anyone' 공개 권한을 부여하지 않음.
+// (기존 공개 파일 정리는 scripts/unshare-explanations.ts)
 
 // ===== 파일명 =====
 
@@ -523,7 +519,7 @@ async function processSplitTask(
       } else {
         const pageBuf = await extractPagesPdf(buf, range.startPage, range.endPage);
         uploadedFile = await uploadPdf(writeDrive, pageBuf, name, roundFolderId);
-        await makePublic(writeDrive, uploadedFile.id);
+        // 비공개 유지 — 공개 권한 부여 안 함 (사이트는 /api/explanation 프록시 경유)
         console.log(`   ✔ ${name} → ${uploadedFile.id} (p${range.startPage}-${range.endPage}, ${pageBuf.length} bytes)`);
       }
 

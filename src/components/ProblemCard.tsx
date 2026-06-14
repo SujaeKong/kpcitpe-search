@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { Problem } from '../lib/types';
 import Badge from './Badge';
 import HighlightedText, { findIndicesForKey } from './HighlightedText';
@@ -15,7 +16,12 @@ const MOBILE_BREAKPOINT = 768; // iOS Safari iframe PDF 호환 이슈로 모바�
 export default function ProblemCard({ result }: Props) {
   const p: Problem = result.problem;
   const [modalOpen, setModalOpen] = useState(false);
-  const { user, loading: authLoading } = useAuth();
+  const [consentPromptOpen, setConsentPromptOpen] = useState(false);
+  const [consentBusy, setConsentBusy] = useState(false);
+  const { user, loading: authLoading, refresh } = useAuth();
+  const baseUrl = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
+  // 로그인했지만 광고성 정보 수신 미동의 → 해설지 게이트 대상
+  const needsConsent = Boolean(user) && !user?.marketingConsent;
   const titleIdx = findIndicesForKey(result.matches, 'title');
   const contentIdx = findIndicesForKey(result.matches, 'content');
   const sessionLabel =
@@ -27,16 +33,25 @@ export default function ProblemCard({ result }: Props) {
   const numLabel = p.questionLabel ? `${p.questionLabel}번` : '';
 
   const hasExplanation = Boolean(p.explanationFileId);
-  // /preview URL은 Drive 인터페이스(다운로드/인쇄/공유 버튼) 없이 PDF만 노출
+  // 서버 프록시 경유 — 로그인 + 수신동의 검증 후에만 PDF를 내려줌 (Drive 파일은 비공개)
   const externalUrl = hasExplanation
-    ? `https://drive.google.com/file/d/${p.explanationFileId}/preview`
+    ? `${baseUrl}/api/explanation?fileId=${encodeURIComponent(p.explanationFileId as string)}`
     : null;
+
+  // 해설지 뷰 실제 오픈 (모바일은 새 탭, 데스크탑은 모달)
+  const openExplanationView = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT && externalUrl) {
+      window.open(externalUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      setModalOpen(true);
+    }
+  };
 
   const handleOpenExplanation = (e: React.MouseEvent) => {
     e.preventDefault();
-    // 인증 게이트: 로그인 안 한 사용자는 로그인 페이지로
-    if (!authLoading && !user) {
-      const baseUrl = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
+    if (authLoading) return;
+    // 1) 미로그인 → 네이버 로그인
+    if (!user) {
       const returnTo =
         typeof window !== 'undefined'
           ? window.location.pathname + window.location.search
@@ -44,10 +59,33 @@ export default function ProblemCard({ result }: Props) {
       window.location.href = `${baseUrl}/api/auth/naver/login?return=${encodeURIComponent(returnTo)}`;
       return;
     }
-    if (typeof window !== 'undefined' && window.innerWidth < MOBILE_BREAKPOINT && externalUrl) {
-      window.open(externalUrl, '_blank', 'noopener,noreferrer');
-    } else {
-      setModalOpen(true);
+    // 2) 로그인했지만 수신 미동의 → 그 자리에서 동의 프롬프트
+    if (!user.marketingConsent) {
+      setConsentPromptOpen(true);
+      return;
+    }
+    // 3) 동의 완료 → 바로 열기
+    openExplanationView();
+  };
+
+  // 프롬프트에서 "동의하고 보기": 수신동의 저장 → 인증 캐시 갱신 → 해설지 오픈
+  const handleConsentAndView = async () => {
+    setConsentBusy(true);
+    try {
+      const res = await fetch(`${baseUrl}/api/consent`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ consent: true }),
+      });
+      if (!res.ok) throw new Error('consent failed');
+      refresh();
+      setConsentPromptOpen(false);
+      openExplanationView();
+    } catch {
+      // 네트워크/서버 오류: 프롬프트 유지하고 버튼만 다시 활성화
+    } finally {
+      setConsentBusy(false);
     }
   };
 
@@ -91,6 +129,9 @@ export default function ProblemCard({ result }: Props) {
             {!authLoading && !user && (
               <span className="ml-1 text-xs text-gray-400">(로그인 필요)</span>
             )}
+            {!authLoading && needsConsent && (
+              <span className="ml-1 text-xs text-gray-400">(수신동의 필요)</span>
+            )}
           </button>
         ) : (
           <span className="text-xs text-gray-400">해설지 준비 중</span>
@@ -101,6 +142,55 @@ export default function ProblemCard({ result }: Props) {
         onClose={() => setModalOpen(false)}
         problem={p}
       />
+      {consentPromptOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={() => !consentBusy && setConsentPromptOpen(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="수신동의 안내"
+          >
+            <div
+              className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="rounded-md bg-emerald-50 p-3 text-sm text-emerald-900">
+                <div className="font-semibold">✨ 해설지는 수신동의 후 볼 수 있어요</div>
+                <p className="mt-1 text-emerald-800">
+                  KPC 신규 회차의 해설지가 추가되는 즉시 가장 먼저 메일로 받아보실 수 있어요.
+                </p>
+              </div>
+              <p className="mt-3 text-xs text-gray-600">
+                아래 <strong className="font-medium">동의하고 보기</strong>를 누르면 광고성 정보
+                수신에 동의하게 되며, 바로 해설지가 열립니다.
+              </p>
+              <p className="mt-1 text-[10px] text-gray-400">
+                정보통신망법에 따라 동의자에게만 발송하며, 메일 하단의 수신거부 링크로 언제든 해제할
+                수 있습니다.
+              </p>
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConsentPromptOpen(false)}
+                  disabled={consentBusy}
+                  className="rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50 disabled:opacity-60"
+                >
+                  닫기
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConsentAndView}
+                  disabled={consentBusy}
+                  className="rounded bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+                >
+                  {consentBusy ? '처리 중…' : '동의하고 보기'}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
     </article>
   );
 }
