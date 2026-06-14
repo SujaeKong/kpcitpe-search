@@ -39,9 +39,10 @@
 | 백엔드 | Cloudflare Workers (Pages Functions) | OAuth callback, /api/me, /api/admin/* |
 | DB | Cloudflare D1 (`kpcitpe-users`) | id `e4db547e-fb9f-4a42-a095-e259912bc429` |
 | 인증 | Naver OAuth + JWT (HMAC-SHA256, Web Crypto) | 7일 세션 쿠키 |
-| 해설지 | Google Drive (`/preview` iframe) | API로 자동 매핑, lock은 owner-only라 미적용 |
+| 해설지 열람 | `/api/explanation` 서버 프록시 (서비스계정으로 Drive 스트리밍) | **로그인 + 수신동의** 사용자만. 클라+서버 2단 게이트 |
+| 해설지 읽기 인증 | Service Account (drive.readonly, RS256 JWT in Worker) | 통합본+분할본 전부 읽음. `src/lib/google-drive.ts` |
 | 자동화 | GitHub Actions | deploy-cloudflare + sync-drive + split-pdfs + rename-hapsuk |
-| PDF 분할 | pdfjs-dist + pdf-lib + Google OAuth Delegation | 통합 PDF → 문항별 PDF 자동 분할 (사용자 Drive에 업로드) |
+| PDF 분할 | pdfjs-dist + pdf-lib + Google OAuth Delegation | 통합 PDF → 문항별 PDF 자동 분할 (CI에서만, 사용자 Drive에 업로드) |
 
 ---
 
@@ -114,23 +115,25 @@ kpcitpe-search/
 
 ## 4. 환경변수 / Secrets 정리
 
-### Cloudflare Pages env_vars (production)
+### Cloudflare Pages env_vars / secrets (production)
 - `NAVER_CLIENT_ID` — Naver OAuth client_id
 - `NAVER_CLIENT_SECRET` — Naver OAuth secret
 - `JWT_SECRET` — JWT 서명 키 (32 bytes hex)
 - `PUBLIC_SITE_URL` — `https://kpcitpe-search.pages.dev`
 - `ADMIN_EMAILS` — 콤마구분 admin 이메일 (`ksujae22@naver.com`)
+- **`GOOGLE_SERVICE_ACCOUNT_JSON`** — `/api/explanation` 프록시가 Drive 해설지를 읽는 데 사용. 없으면 해설지 500. `deploy-cloudflare.yml`의 "Sync runtime secrets" 스텝이 GitHub 시크릿 → Pages로 **배포마다 자동 주입**(단일 출처).
 - (D1 `DB`는 wrangler.toml binding으로 주입)
 
-**OAuth Delegation (사용자 Drive 쓰기용 — Phase B)**:
-- `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REFRESH_TOKEN`
-- 이유: Service Account는 storage quota=0이라 파일 업로드 불가. 사용자(`ksujae@gmail.com`) OAuth로 사용자 Drive 15GB 사용.
-- scope: `drive.file` (앱이 만든 파일만 접근)
+**OAuth Delegation (사용자 Drive 쓰기용 — CI/split-pdfs 전용, Worker 미사용)**:
+- `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REFRESH_TOKEN` (GitHub Secrets에만)
+- 이유: SA는 storage quota=0이라 업로드 불가 → 사용자(`ksujae@gmail.com`) OAuth로 Drive 15GB 사용. scope `drive.file`.
+- ⚠️ OAuth 앱은 **프로덕션 게시 필수** — "테스트" 상태면 refresh token이 7일마다 만료(`invalid_grant`)되어 split-pdfs가 깨짐. (런타임 해설지는 SA라 무관.)
 
 ### GitHub Secrets
-- `CLOUDFLARE_API_TOKEN` — Cloudflare 배포용
+- `CLOUDFLARE_API_TOKEN` — Cloudflare 배포 + Pages 시크릿 주입용
 - `CLOUDFLARE_ACCOUNT_ID` — `f20bfdcf3a187412a74b852b36ad4240`
-- `GOOGLE_SERVICE_ACCOUNT_JSON` — Drive sync용
+- `GOOGLE_SERVICE_ACCOUNT_JSON` — Drive sync + 해설지 프록시 (Pages로도 주입)
+- `GOOGLE_OAUTH_CLIENT_ID/SECRET/REFRESH_TOKEN` — split-pdfs 업로드용
 - `DRIVE_ROOT_FOLDER_ID` — `1gKPEW_eVdR086KXwPDZIeUfPvlQp9-rV`
 
 ---
@@ -152,18 +155,34 @@ deploy-cloudflare.yml                sync-drive.yml (매일 03:00 + 수동)
                                     [Cloudflare Pages 갱신]
 ```
 
-런타임:
+런타임 트래픽 (3경로):
+
+**① 검색 — 100% 클라이언트 (서버 안 거침)**
 ```
-사용자 → 검색바 입력
-   ↓ debounce 200ms
-[클라이언트 Fuse.js 검색 — problems.json 메모리]
-   ↓
-결과 카드 표시
-   ↓ "📖 해설지 보기" 클릭
-[useAuth() 체크]
-   ├─ 미로그인 → /api/auth/naver/login 으로 redirect
-   └─ 로그인 → ExplanationModal 열기 (iframe /preview)
+브라우저 → Cloudflare CDN → index.html + problems.json(~9.7MB, sessionStorage 캐시)
+   → React 하이드레이션 → Fuse.js 인덱스(브라우저 메모리) → 로컬 검색. 서버 왕복 0, 비로그인 OK
 ```
+
+**② 인증 — Pages Functions + D1**
+```
+/api/auth/naver/login → nid.naver.com 동의 → /api/auth/naver/callback
+   → D1 users upsert → JWT 서명 → Set-Cookie(kpc_session, HttpOnly)
+/api/me → 쿠키 검증 → {user, marketingConsent}
+```
+
+**③ 해설지 — 2단 게이트 + 서비스계정 Drive 프록시**
+```
+"📖 해설지 보기" 클릭
+   │ (클라 1차 게이트, ProblemCard)
+   ├─ 미로그인 → 네이버 로그인 이동
+   ├─ 로그인+미동의 → "동의하고 보기" 프롬프트 → /api/consent (D1 update)
+   └─ 동의완료 → iframe src = /api/explanation?fileId=XXX
+                    ↓ Cloudflare Function (서버 2차 게이트 = 권위)
+        JWT 검증 실패→401 / D1 marketing_consent=0→403
+                    ↓ 통과 시 서비스계정 JWT(RS256)→access_token
+        Drive files.get?alt=media (통합본+분할본) → application/pdf 스트리밍(no-store)
+```
+- 클라 게이트는 UX·즉시차단, 서버 게이트가 진짜 enforce(우회 불가). `src/pages/api/explanation.ts` + `src/lib/google-drive.ts`.
 
 ---
 
@@ -580,11 +599,13 @@ curl -X PATCH "https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/pages/
 
 - **GitHub 레포**: public, 본인만 쓰기. 2FA 권장.
 - **Cloudflare 배포**: API token 비밀. 노출 시 routine 재발급 (cf 대시보드 → My Profile → API Tokens → Roll).
-- **Drive**: SA `kpc-drive-bot@kpcitpe-search.iam.gserviceaccount.com` 편집자 권한. 폴더는 "링크 있는 모든 사용자 - 뷰어".
+- **Drive**: SA `kpc-drive-bot@kpcitpe-search.iam.gserviceaccount.com` 편집자 권한. 폴더는 "링크 있는 모든 사용자 - 뷰어"(상속).
+- **해설지 접근 제어**: `/api/explanation` 서버 프록시가 **로그인(JWT) + 수신동의(D1 marketing_consent)** 를 검증한 뒤에만 SA로 PDF 스트리밍. 클라이언트 게이트(ProblemCard)는 UX용이고 서버가 권위. 검색은 비로그인 포함 공개.
+  - ⚠️ **미완(누수)**: Drive 파일이 폴더 레벨 'anyone' 공유를 상속해 아직 공개 → fileId 알면 직접 Drive URL로 우회 가능. 닫으려면 루트 폴더를 SA에 공유 보장 후 'anyone' 제거(SA 프록시라 비공개 후에도 읽힘). per-file un-share는 상속 권한이라 실패함.
 - **JWT**: HMAC-SHA256, JWT_SECRET 32 bytes, 7일 만료.
 - **세션 쿠키**: HttpOnly, Secure, SameSite=Lax.
 - **OAuth state**: CSRF 방어 쿠키 + 검증.
-- **D1**: wrangler.toml binding으로 자동 인증. SA JSON 미사용.
+- **D1**: wrangler.toml binding으로 자동 인증.
 - **Admin**: ADMIN_EMAILS 화이트리스트 (콤마 구분).
 - **노출된 시크릿** (이전 채팅에서 평문 등장): Cloudflare API token, Naver Client Secret, JWT_SECRET — 위험 낮음 (결제 손실 X). routine 재발급 권장.
 
@@ -596,7 +617,11 @@ curl -X PATCH "https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/pages/
 - `project_hosting.md` — Cloudflare Pages 배포 결정 (GitHub Pages 폐기)
 - `project_data_model_academy.md` — 합숙도 academy 귀속, 기출만 null
 - `project_data_normalization.md` — 회차 -N 접미사, ID에 cert 슬러그, 소문제, 옛 회차 자동 순번
+- `project_explanation_consent_gate.md` — 해설지 수신동의 게이트 + SA 프록시 + 누수차단 미완
+- `project_round_upload_gotchas.md` — 신규 회차는 "제{N}회 ..." 전용 폴더에 (오염 함정)
 - `feedback_git_author.md` — git commit author = ksujae@gmail.com
+- `feedback_external_ui_versions.md` — Google/Cloudflare/Naver UI 자주 개편 → 가이드 전 현행 확인
+- `feedback_keep_project_md_updated.md` — 변경 시 PROJECT.md 같이 갱신
 
 ---
 
