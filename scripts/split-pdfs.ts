@@ -635,6 +635,31 @@ const TEST_SPECS: TestSpec[] = [
     sourceType: '기출', round: '138', certScope: '정보관리', session: '4', sessionPart: null,
     problemFilter: (p) => p.sourceType === '기출' && p.round === '138' && p.certScope === '정보관리' && p.session === '4',
   },
+  // 기출 139 — 1교시(13/단답) + 2/3/4교시(6/서술), 전부 정보관리. ("제139회 기출문제 해설집" 폴더)
+  {
+    fileId: '1Yk5osxEzBE_Jm3_ipxqNAyymB7_gQkGw',
+    fileName: '139회_기출풀이_정보관리 1교시.pdf',
+    sourceType: '기출', round: '139', certScope: '정보관리', session: '1', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '기출' && p.round === '139' && p.certScope === '정보관리' && p.session === '1',
+  },
+  {
+    fileId: '1F1jQBEr24OnECx3-_AKv_ACbWp1xY4Uk',
+    fileName: '139회_기출풀이_정보관리 2교시.pdf',
+    sourceType: '기출', round: '139', certScope: '정보관리', session: '2', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '기출' && p.round === '139' && p.certScope === '정보관리' && p.session === '2',
+  },
+  {
+    fileId: '1axpDcOC0NuEfJtmIyJiP9wyNDYLNULlg',
+    fileName: '139회_기출풀이_정보관리 3교시.pdf',
+    sourceType: '기출', round: '139', certScope: '정보관리', session: '3', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '기출' && p.round === '139' && p.certScope === '정보관리' && p.session === '3',
+  },
+  {
+    fileId: '1nG2Qi5_ghHD6T9-vCnGFqxIfrf0nQ7CZ',
+    fileName: '139회_기출풀이_정보관리 4교시.pdf',
+    sourceType: '기출', round: '139', certScope: '정보관리', session: '4', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '기출' && p.round === '139' && p.certScope === '정보관리' && p.session === '4',
+  },
   {
     fileId: '1VhbDaiVw_iaWc2GS-QvA7x6zRuXRhmCu',
     fileName: '제110회 컴퓨터시스템응용기술사 기출풀이 1교시.pdf',
