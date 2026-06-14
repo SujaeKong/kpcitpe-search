@@ -33,10 +33,9 @@ export default function ProblemCard({ result }: Props) {
   const numLabel = p.questionLabel ? `${p.questionLabel}번` : '';
 
   const hasExplanation = Boolean(p.explanationFileId);
-  // NOTE: 서버 프록시(/api/explanation) 전환은 OAuth refresh token invalid_grant로
-  // 보류. 자격증명 복구 전까지 Drive 직접 /preview로 임시 복구 (파일은 아직 공개).
+  // 서버 프록시 경유 — 로그인 + 수신동의 검증 후에만 PDF를 내려줌 (Drive 파일은 비공개)
   const externalUrl = hasExplanation
-    ? `https://drive.google.com/file/d/${p.explanationFileId}/preview`
+    ? `${baseUrl}/api/explanation?fileId=${encodeURIComponent(p.explanationFileId as string)}`
     : null;
 
   // 해설지 뷰 실제 오픈 (모바일은 새 탭, 데스크탑은 모달)

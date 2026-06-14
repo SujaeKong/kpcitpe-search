@@ -4,6 +4,10 @@ dist
 .env
 .env.*
 !.env.example
+# OAuth/서비스계정 자격증명 — 절대 커밋 금지
+.secrets/
+client_secret*.json
+*-*.iam.gserviceaccount.com.json
 .DS_Store
 *.log
 public/data/
