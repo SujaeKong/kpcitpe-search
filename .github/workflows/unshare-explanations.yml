@@ -1,0 +1,42 @@
+name: Unshare explanation PDFs (one-time)
+
+# 기존에 'anyone'(링크 있는 누구나) 공개로 업로드된 해설지 PDF의 공개 권한을 제거.
+# 이후 사이트는 /api/explanation 프록시(로그인+수신동의 검증)로만 열람 가능.
+# OAuth 자격증명이 GitHub 시크릿에만 있으므로 CI에서 수동 트리거로 실행한다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: '미리보기 (DRY_RUN — 권한을 실제로 바꾸지 않고 대상만 집계)'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: unshare-explanations
+  cancel-in-progress: false
+
+jobs:
+  unshare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Unshare explanation PDFs
+        env:
+          GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.GOOGLE_OAUTH_CLIENT_ID }}
+          GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
+          GOOGLE_OAUTH_REFRESH_TOKEN: ${{ secrets.GOOGLE_OAUTH_REFRESH_TOKEN }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '' }}
+        run: npm run unshare:explanations

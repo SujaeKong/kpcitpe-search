@@ -12,6 +12,7 @@
     "split:pdfs": "tsx scripts/split-pdfs.ts",
     "split:debug": "tsx scripts/debug-pdf-text.ts",
     "split:diag": "tsx scripts/debug-multi.ts",
+    "unshare:explanations": "tsx scripts/unshare-explanations.ts",
     "preview": "astro preview",
     "astro": "astro"
   },
