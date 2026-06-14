@@ -601,7 +601,7 @@ curl -X PATCH "https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/pages/
 - **Cloudflare 배포**: API token 비밀. 노출 시 routine 재발급 (cf 대시보드 → My Profile → API Tokens → Roll).
 - **Drive**: SA `kpc-drive-bot@kpcitpe-search.iam.gserviceaccount.com` 편집자 권한. 폴더는 "링크 있는 모든 사용자 - 뷰어"(상속).
 - **해설지 접근 제어**: `/api/explanation` 서버 프록시가 **로그인(JWT) + 수신동의(D1 marketing_consent)** 를 검증한 뒤에만 SA로 PDF 스트리밍. 클라이언트 게이트(ProblemCard)는 UX용이고 서버가 권위. 검색은 비로그인 포함 공개.
-  - ⚠️ **미완(누수)**: Drive 파일이 폴더 레벨 'anyone' 공유를 상속해 아직 공개 → fileId 알면 직접 Drive URL로 우회 가능. 닫으려면 루트 폴더를 SA에 공유 보장 후 'anyone' 제거(SA 프록시라 비공개 후에도 읽힘). per-file un-share는 상속 권한이라 실패함.
+  - **누수 차단 완료(2026-06-14)**: Drive 루트 `01. 기출문제 & 모의고사`(`1gKPEW...`)에만 직접 걸려 있던 `anyone:reader`를 SA(writer, drive 스코프)로 제거 → 하위 통합본·분할본 전부 비공개로 전파. 직접 Drive URL 우회 불가, 비인증 접근은 로그인 리다이렉트. SA는 writer라 비공개 후에도 읽어 프록시 정상. split-pdfs는 `makePublic()` 안 하므로 신규 분할본도 자동 비공개. (per-file un-share는 'anyone'이 폴더 상속이라 실패 — 반드시 루트 폴더에서 제거.)
 - **JWT**: HMAC-SHA256, JWT_SECRET 32 bytes, 7일 만료.
 - **세션 쿠키**: HttpOnly, Secure, SameSite=Lax.
 - **OAuth state**: CSRF 방어 쿠키 + 검증.
