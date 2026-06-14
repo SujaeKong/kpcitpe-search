@@ -18,11 +18,9 @@ interface Env {
   NAVER_CLIENT_ID?: string;
   NAVER_CLIENT_SECRET?: string;
   PUBLIC_SITE_URL?: string;
-  // 해설지 프록시(/api/explanation)가 비공개 Drive 파일을 읽기 위한 OAuth Delegation 자격증명.
-  // split-pdfs.ts가 업로드에 쓰는 것과 동일한 값 (drive.file 스코프 = 앱이 만든 파일만 접근).
-  GOOGLE_OAUTH_CLIENT_ID?: string;
-  GOOGLE_OAUTH_CLIENT_SECRET?: string;
-  GOOGLE_OAUTH_REFRESH_TOKEN?: string;
+  // 해설지 프록시(/api/explanation)가 Drive 파일을 읽기 위한 서비스계정 자격증명.
+  // sync-drive가 쓰는 것과 동일. drive.readonly로 공개/공유된 모든 파일(통합본+분할본) 읽기.
+  GOOGLE_SERVICE_ACCOUNT_JSON?: string;
 }
 
 /** runtime.env (Cloudflare) 또는 process.env (로컬 dev/SSG) 폴백 */
@@ -33,12 +31,8 @@ export function getEnv(locals: any): Env {
     NAVER_CLIENT_ID: runtimeEnv.NAVER_CLIENT_ID ?? process.env.NAVER_CLIENT_ID,
     NAVER_CLIENT_SECRET: runtimeEnv.NAVER_CLIENT_SECRET ?? process.env.NAVER_CLIENT_SECRET,
     PUBLIC_SITE_URL: runtimeEnv.PUBLIC_SITE_URL ?? process.env.PUBLIC_SITE_URL,
-    GOOGLE_OAUTH_CLIENT_ID:
-      runtimeEnv.GOOGLE_OAUTH_CLIENT_ID ?? process.env.GOOGLE_OAUTH_CLIENT_ID,
-    GOOGLE_OAUTH_CLIENT_SECRET:
-      runtimeEnv.GOOGLE_OAUTH_CLIENT_SECRET ?? process.env.GOOGLE_OAUTH_CLIENT_SECRET,
-    GOOGLE_OAUTH_REFRESH_TOKEN:
-      runtimeEnv.GOOGLE_OAUTH_REFRESH_TOKEN ?? process.env.GOOGLE_OAUTH_REFRESH_TOKEN,
+    GOOGLE_SERVICE_ACCOUNT_JSON:
+      runtimeEnv.GOOGLE_SERVICE_ACCOUNT_JSON ?? process.env.GOOGLE_SERVICE_ACCOUNT_JSON,
   };
 }
 
