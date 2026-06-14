@@ -48,9 +48,9 @@ export default function ExplanationModal({ open, onClose, problem }: Props) {
   if (!open || !problem.explanationFileId) return null;
 
   const fileId = problem.explanationFileId;
-  // 서버 프록시 경유 — 로그인 + 수신동의 검증 후에만 PDF 스트리밍 (Drive 파일은 비공개)
-  const baseUrl = (import.meta.env.BASE_URL ?? '/').replace(/\/$/, '');
-  const previewUrl = `${baseUrl}/api/explanation?fileId=${encodeURIComponent(fileId)}`;
+  // NOTE: 서버 프록시(/api/explanation) 전환은 OAuth invalid_grant로 보류.
+  // 자격증명 복구 전까지 Drive 직접 /preview로 임시 복구.
+  const previewUrl = `https://drive.google.com/file/d/${fileId}/preview`;
   const externalUrl = previewUrl;
 
   const sessionLabel =
