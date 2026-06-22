@@ -65,7 +65,9 @@ jobs:
         if: steps.commit.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh workflow run split-pdfs.yml --ref main -f overwrite=false
+        # mode=test 명시: 기본값 'all'은 questions 없는 옛 회차 548개를 전부 재분할해
+        # 통합본 폴백한 정렬오류 회차들이 다시 어긋난 분할로 되살아남. TEST_SPECS만 처리.
+        run: gh workflow run split-pdfs.yml --ref main -f overwrite=false -f mode=test
 
       - name: Trigger deploy (if changed)
         # GITHUB_TOKEN으로 push된 커밋은 deploy-cloudflare.yml의 push 트리거를
