@@ -666,12 +666,7 @@ const TEST_SPECS: TestSpec[] = [
     sourceType: '기출', round: '110', certScope: '컴시응', session: '1', sessionPart: null,
     problemFilter: (p) => p.sourceType === '기출' && p.round === '110' && p.certScope === '컴시응' && p.session === '1',
   },
-  {
-    fileId: '1te6VyAxWJeQF72TBVe705ICSqpl5P606',
-    fileName: '87회-정보관리 문제풀이집-1교시 v2.0.pdf',
-    sourceType: '기출', round: '87', certScope: '정보관리', session: '1', sessionPart: null,
-    problemFilter: (p) => p.sourceType === '기출' && p.round === '87' && p.certScope === '정보관리' && p.session === '1',
-  },
+  // (87회 1교시 정보관리: 분할 정렬 오류로 통합본 폴백 → TEST_SPECS 제외, 재분할 금지)
   // 모의 — 129회(2026.04) 1/2/3/4교시 모두 + 옛 회차
   {
     fileId: '1GliUlJHUqohC6F21hdNEIfzBrnR_C2bk',
@@ -697,6 +692,31 @@ const TEST_SPECS: TestSpec[] = [
     sourceType: '모의', round: '2026.04', certScope: '공통', session: '4', sessionPart: null,
     problemFilter: (p) => p.sourceType === '모의' && p.round === '2026.04' && p.session === '4',
   },
+  // 모의 130회(2026.06) 1~4교시 — "제130회(26년06월)KPC기술사 모의고사 해설집" 폴더
+  {
+    fileId: '1OAos-2kaorBsZkXmx4hFESSmPlu1qTwv',
+    fileName: '[KPC기술사IMPACT실전모의고사]_제130회_해설집_202606_1교시.pdf',
+    sourceType: '모의', round: '2026.06', certScope: '공통', session: '1', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '모의' && p.round === '2026.06' && p.session === '1',
+  },
+  {
+    fileId: '1dyWkXDQImbnTW4K_WH5cZJzNrWB_5e8W',
+    fileName: '[KPC기술사IMPACT실전모의고사]_제130회_해설집_202606_2교시.pdf',
+    sourceType: '모의', round: '2026.06', certScope: '공통', session: '2', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '모의' && p.round === '2026.06' && p.session === '2',
+  },
+  {
+    fileId: '1eLTwJaFuernS6bJSWHSodlZ2UdoRWiK-',
+    fileName: '[KPC기술사IMPACT실전모의고사]_제130회_해설집_202606_3교시.pdf',
+    sourceType: '모의', round: '2026.06', certScope: '공통', session: '3', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '모의' && p.round === '2026.06' && p.session === '3',
+  },
+  {
+    fileId: '1H_pDUymq6Yk2LUcpEYIIHjywaC860x0W',
+    fileName: '[KPC기술사IMPACT실전모의고사]_제130회_해설집_202606_4교시.pdf',
+    sourceType: '모의', round: '2026.06', certScope: '공통', session: '4', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '모의' && p.round === '2026.06' && p.session === '4',
+  },
   {
     fileId: '1fXlCEZz42JZx2bDyYd3vrPx00cNiJpTZ',
     fileName: '제104회_해설집_202112_1교시.pdf',
@@ -709,12 +729,7 @@ const TEST_SPECS: TestSpec[] = [
     sourceType: '모의', round: '2017.07', certScope: '컴시응', session: '1', sessionPart: null,
     problemFilter: (p) => p.sourceType === '모의' && p.round === '2017.07' && p.session === '1' && p.certScope === '컴시응',
   },
-  {
-    fileId: '1JeQd7R44XjECeZyOLqgqXETnPTWOBE9u',
-    fileName: '1교시해설-제22회(2010년10월)KPC.pdf',
-    sourceType: '모의', round: '2010.10-1', certScope: '공통', session: '1', sessionPart: null,
-    problemFilter: (p) => p.sourceType === '모의' && p.round === '2010.10-1' && p.session === '1',
-  },
+  // (제22회 2010.10-1: 분할 정렬 오류로 통합본 폴백 → TEST_SPECS 제외, 재분할 금지)
 ];
 
 /**
