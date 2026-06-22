@@ -8004,115 +8004,19 @@
       "2026.06": {
         "1": {
           "id": "1OAos-2kaorBsZkXmx4hFESSmPlu1qTwv",
-          "name": "[KPC기술사IMPACT실전모의고사]_제130회_해설집_202606_1교시.pdf",
-          "questions": {
-            "1": {
-              "id": "1S1YQom4bD2Hg6HE-j-wlfJczM-ezZw7C",
-              "name": "모의_2026.06_공통_1_01_메모리_벽Memory_Wall.pdf"
-            },
-            "2": {
-              "id": "1aRjQMfWQXpzIeTqVSMFJOV7Fk38hpTBo",
-              "name": "모의_2026.06_공통_1_02_IPC.pdf"
-            },
-            "3": {
-              "id": "1I5zq7-_NtRtMGTolaUOqcgGCB8Ahv9jJ",
-              "name": "모의_2026.06_공통_1_03_자율주행을_위한_인공지능.pdf"
-            },
-            "4": {
-              "id": "1Dd-eaQGrRFYR7ALWIUNhpZGBRlcL4k-J",
-              "name": "모의_2026.06_공통_1_04_SRv6Segment_Routing_over.pdf"
-            },
-            "5": {
-              "id": "1LYB9B4-ZOuhFxJa45J_osl4owP23xU-i",
-              "name": "모의_2026.06_공통_1_05_다중벡터_공격Multi-Vector_Attack.pdf"
-            },
-            "6": {
-              "id": "1bj9sjgoIeMWTMOVDsu5-mepSlSiYWZRn",
-              "name": "모의_2026.06_공통_1_06_Affective_AI.pdf"
-            },
-            "7": {
-              "id": "167e4t9tzMixEtb13kKGL5KbH0SwWJ9ps",
-              "name": "모의_2026.06_공통_1_07_BAS.pdf"
-            },
-            "8": {
-              "id": "1j6Ov-F88kgktWkFumLGddPozo1i6aVSY",
-              "name": "모의_2026.06_공통_1_08_테스트_오라클.pdf"
-            },
-            "9": {
-              "id": "1FZtTpcArB1jNVRshULjwf5dL0ApXpEjt",
-              "name": "모의_2026.06_공통_1_09_시계열_데이터베이스.pdf"
-            },
-            "10": {
-              "id": "1Ptwk1FQjCv5NOYaj85olD8hSkfoI3O2W",
-              "name": "모의_2026.06_공통_1_10_데이터_가상화.pdf"
-            }
-          }
+          "name": "[KPC기술사IMPACT실전모의고사]_제130회_해설집_202606_1교시.pdf"
         },
         "2": {
           "id": "1dyWkXDQImbnTW4K_WH5cZJzNrWB_5e8W",
-          "name": "[KPC기술사IMPACT실전모의고사]_제130회_해설집_202606_2교시.pdf",
-          "questions": {
-            "1": {
-              "id": "1PPVPJE1smX5QXiVAHr-C3s-MVY2IlzQW",
-              "name": "모의_2026.06_공통_2_01_MLO.pdf"
-            },
-            "2": {
-              "id": "1e66gMiTNKZmtM4eS3GgPIO6rN7sK9Yfs",
-              "name": "모의_2026.06_공통_2_02_최근_AI_모델의.pdf"
-            },
-            "3": {
-              "id": "1VDnj_75mZ2CFouE-1mlEcaRoW-inCACQ",
-              "name": "모의_2026.06_공통_2_03_가명정보_제도_도입으로.pdf"
-            },
-            "4": {
-              "id": "1q4VFpB7WP1uiE813JuzPoH1_hja0kcGn",
-              "name": "모의_2026.06_공통_2_04_소프트웨어_개발_및.pdf"
-            }
-          }
+          "name": "[KPC기술사IMPACT실전모의고사]_제130회_해설집_202606_2교시.pdf"
         },
         "3": {
           "id": "1eLTwJaFuernS6bJSWHSodlZ2UdoRWiK-",
-          "name": "[KPC기술사IMPACT실전모의고사]_제130회_해설집_202606_3교시.pdf",
-          "questions": {
-            "1": {
-              "id": "1-1CGwgZlwL8FXzNVogNwghuo_rzW7SWH",
-              "name": "모의_2026.06_공통_3_01_최근_정보화사업의_투자.pdf"
-            },
-            "2": {
-              "id": "1jNtE02wyRad-A8651yX36IDhPKoO5buk",
-              "name": "모의_2026.06_공통_3_02_NIA.pdf"
-            },
-            "3": {
-              "id": "1lF8jO_4QVvsB9Nj_SG66LXWQ8-D4t5kx",
-              "name": "모의_2026.06_공통_3_03_고품질_공공데이터_확보.pdf"
-            },
-            "4": {
-              "id": "1Y_PVyTI53j2KPprAOtIphBwb5hp_VqO8",
-              "name": "모의_2026.06_공통_3_04_과학기술정보통신부에서_인공지능_영향평가.pdf"
-            }
-          }
+          "name": "[KPC기술사IMPACT실전모의고사]_제130회_해설집_202606_3교시.pdf"
         },
         "4": {
           "id": "1H_pDUymq6Yk2LUcpEYIIHjywaC860x0W",
-          "name": "[KPC기술사IMPACT실전모의고사]_제130회_해설집_202606_4교시.pdf",
-          "questions": {
-            "1": {
-              "id": "1z4FwKhlb7AFC3wxS5HaHZOD6OWfwU1WG",
-              "name": "모의_2026.06_공통_4_01_정부는_유해_사이트.pdf"
-            },
-            "2": {
-              "id": "1T5c_XM-e82C_wZZUFkzF-rHCRGOEuTck",
-              "name": "모의_2026.06_공통_4_02_운영체제의_문맥교환Context_Switching에.pdf"
-            },
-            "3": {
-              "id": "1c9SHl0nSuN7lpmRX2DfPM8eDA890JMKl",
-              "name": "모의_2026.06_공통_4_03_AI_자동화가_단순.pdf"
-            },
-            "4": {
-              "id": "1BG_KOxEDcHdkCdSLb4x7DvFc-cvcZv2x",
-              "name": "모의_2026.06_공통_4_04_다크웹은_미국_해군연구소에서.pdf"
-            }
-          }
+          "name": "[KPC기술사IMPACT실전모의고사]_제130회_해설집_202606_4교시.pdf"
         }
       },
       "2018.10": {
