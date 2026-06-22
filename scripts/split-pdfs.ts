@@ -692,8 +692,33 @@ const TEST_SPECS: TestSpec[] = [
     sourceType: '모의', round: '2026.04', certScope: '공통', session: '4', sessionPart: null,
     problemFilter: (p) => p.sourceType === '모의' && p.round === '2026.04' && p.session === '4',
   },
-  // (130회 모의 2026.06: 다종목(공통/정관/컴시) 한 교시 혼재로 PDF 순서≠엑셀 번호 →
-  //  분할 시 6/16 오정렬. 통합본 폴백 유지 → TEST_SPECS 제외, 재분할 금지. 모의 다종목 공통 이슈.)
+  // 모의 130회(2026.06) 1~4교시 — "제130회(26년06월)KPC기술사 모의고사 해설집" 폴더.
+  // PDF는 공통→정관→컴시 통합번호(1~16). 엑셀에 번호 prefix가 없어 어댑터가 모의 통합순번으로
+  // 매기므로(autoAssignQuestionNumbers) 검출 번호와 정렬됨.
+  {
+    fileId: '1OAos-2kaorBsZkXmx4hFESSmPlu1qTwv',
+    fileName: '[KPC기술사IMPACT실전모의고사]_제130회_해설집_202606_1교시.pdf',
+    sourceType: '모의', round: '2026.06', certScope: '공통', session: '1', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '모의' && p.round === '2026.06' && p.session === '1',
+  },
+  {
+    fileId: '1dyWkXDQImbnTW4K_WH5cZJzNrWB_5e8W',
+    fileName: '[KPC기술사IMPACT실전모의고사]_제130회_해설집_202606_2교시.pdf',
+    sourceType: '모의', round: '2026.06', certScope: '공통', session: '2', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '모의' && p.round === '2026.06' && p.session === '2',
+  },
+  {
+    fileId: '1eLTwJaFuernS6bJSWHSodlZ2UdoRWiK-',
+    fileName: '[KPC기술사IMPACT실전모의고사]_제130회_해설집_202606_3교시.pdf',
+    sourceType: '모의', round: '2026.06', certScope: '공통', session: '3', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '모의' && p.round === '2026.06' && p.session === '3',
+  },
+  {
+    fileId: '1H_pDUymq6Yk2LUcpEYIIHjywaC860x0W',
+    fileName: '[KPC기술사IMPACT실전모의고사]_제130회_해설집_202606_4교시.pdf',
+    sourceType: '모의', round: '2026.06', certScope: '공통', session: '4', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '모의' && p.round === '2026.06' && p.session === '4',
+  },
   {
     fileId: '1fXlCEZz42JZx2bDyYd3vrPx00cNiJpTZ',
     fileName: '제104회_해설집_202112_1교시.pdf',

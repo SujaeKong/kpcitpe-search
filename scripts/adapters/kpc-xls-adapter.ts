@@ -432,10 +432,20 @@ function splitProblem(raw: string): {
  *
  * 호출 후 각 행의 questionNumber, questionLabel, id가 갱신됨.
  */
+// 모의 자동순번 시 종목 정렬 순서 (통합 해설집 PDF가 공통→정보관리→컴시응 연속 번호이므로 일치)
+const MOUI_CERT_ORDER: Record<string, number> = { 공통: 0, 정보관리: 1, 컴시응: 2 };
+
 function autoAssignQuestionNumbers(sheetProblems: Problem[]): void {
   const groups = new Map<string, Problem[]>();
   for (const p of sheetProblems) {
-    const key = `${p.sourceType}|${p.round}|${p.certScope}|${p.session}`;
+    // 모의는 한 교시 통합 해설집 PDF에 공통+정보관리+컴시응이 하나의 연속 번호(예: 공통 1~10,
+    // 정관 11~13, 컴시 14~16)로 들어있다. 본문에 번호 prefix가 없는 회차(예: 130회)는 자동순번을
+    // 매길 때 certScope를 키에서 빼고 (회차, 교시) 단위로 통합해야 분할 PDF 검출 번호와 정렬이 맞는다.
+    // 기출/합숙은 종목별 별도 시험·PDF이므로 종전대로 certScope 포함.
+    const key =
+      p.sourceType === '모의'
+        ? `${p.sourceType}|${p.round}|${p.session}`
+        : `${p.sourceType}|${p.round}|${p.certScope}|${p.session}`;
     let g = groups.get(key);
     if (!g) {
       g = [];
@@ -453,8 +463,16 @@ function autoAssignQuestionNumbers(sheetProblems: Problem[]): void {
     const used = new Set<number>(explicit);
     let next = explicit.length === 0 ? 1 : Math.max(...explicit) + 1;
 
-    for (const p of group) {
-      if (p.questionNumber !== null) continue;
+    // 번호 없는 문제들. 모의는 종목 순(공통→정관→컴시)으로 정렬해 PDF 통합 번호와 일치시킴.
+    // (V8 sort는 stable이라 같은 종목 내 원래 행 순서 유지.)
+    const nulls = group.filter((p) => p.questionNumber === null);
+    if (group[0]?.sourceType === '모의') {
+      nulls.sort(
+        (a, b) => (MOUI_CERT_ORDER[a.certScope] ?? 9) - (MOUI_CERT_ORDER[b.certScope] ?? 9),
+      );
+    }
+
+    for (const p of nulls) {
       while (used.has(next)) next++;
       const num = next;
       used.add(num);
