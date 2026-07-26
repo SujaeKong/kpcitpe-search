@@ -708,6 +708,32 @@ const TEST_SPECS: TestSpec[] = [
     problemFilter: (p) => p.sourceType === '모의' && p.round === '2017.07' && p.session === '1' && p.certScope === '컴시응',
   },
   // (제22회 2010.10-1: 분할 정렬 오류로 통합본 폴백 → TEST_SPECS 제외, 재분할 금지)
+  // 모의 131회(2026.07) 1/2/3/4교시 — 129회와 동일 형식("문 제 N."), 엑셀 글로벌 번호(1교시 1-16, 2~4교시 1-8).
+  // certScope '공통' → problemFilter가 (round, session)의 전체 종목 16/8/8/8문항을 매칭.
+  {
+    fileId: '1kuqqeWkn2LxywQsE6gsqOvtHPPwRG93q',
+    fileName: '[KPC기술사IMPACT실전모의고사]_제131회_해설집_202607_1교시.pdf',
+    sourceType: '모의', round: '2026.07', certScope: '공통', session: '1', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '모의' && p.round === '2026.07' && p.session === '1',
+  },
+  {
+    fileId: '16VCf8PsZerdqDjjUZEjadXbOtRxhZCSk',
+    fileName: '[KPC기술사IMPACT실전모의고사]_제131회_해설집_202607_2교시.pdf',
+    sourceType: '모의', round: '2026.07', certScope: '공통', session: '2', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '모의' && p.round === '2026.07' && p.session === '2',
+  },
+  {
+    fileId: '1tFEsUDASTOwyiQyn0ouIojO7GFVC_9rz',
+    fileName: '[KPC기술사IMPACT실전모의고사]_제131회_해설집_202607_3교시.pdf',
+    sourceType: '모의', round: '2026.07', certScope: '공통', session: '3', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '모의' && p.round === '2026.07' && p.session === '3',
+  },
+  {
+    fileId: '1WfQmmyyH4IYcoSnF6rU4h-Z_h_oBr9PA',
+    fileName: '[KPC기술사IMPACT실전모의고사]_제131회_해설집_202607_4교시.pdf',
+    sourceType: '모의', round: '2026.07', certScope: '공통', session: '4', sessionPart: null,
+    problemFilter: (p) => p.sourceType === '모의' && p.round === '2026.07' && p.session === '4',
+  },
 ];
 
 /**
