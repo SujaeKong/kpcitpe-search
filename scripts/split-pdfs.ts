@@ -112,12 +112,32 @@ async function trashFile(drive: any, fileId: string): Promise<void> {
   await drive.files.update({ fileId, requestBody: { trashed: true } });
 }
 
+// Drive API 간헐 5xx/429 재시도 (특히 대용량 통합본 업로드 시 502 산발 발생).
+async function withRetry<T>(label: string, fn: () => Promise<T>, tries = 4): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 1; i <= tries; i++) {
+    try {
+      return await fn();
+    } catch (e) {
+      lastErr = e;
+      const code = (e as any)?.code ?? (e as any)?.response?.status;
+      const retriable = [429, 500, 502, 503, 504].includes(Number(code)) || /502|503|500|ECONNRESET|ETIMEDOUT|socket hang up/i.test((e as Error).message ?? '');
+      if (i === tries || !retriable) throw e;
+      console.log(`   ⚠ ${label} 재시도 ${i}/${tries} (${(e as Error).message ?? code})`);
+      await new Promise((r) => setTimeout(r, 1500 * i));
+    }
+  }
+  throw lastErr;
+}
+
 async function downloadPdf(drive: any, fileId: string): Promise<Buffer> {
-  const res = await drive.files.get(
-    { fileId, alt: 'media' },
-    { responseType: 'arraybuffer' },
-  );
-  return Buffer.from(res.data as ArrayBuffer);
+  return withRetry(`download ${fileId}`, async () => {
+    const res = await drive.files.get(
+      { fileId, alt: 'media' },
+      { responseType: 'arraybuffer' },
+    );
+    return Buffer.from(res.data as ArrayBuffer);
+  });
 }
 
 async function uploadPdf(
@@ -126,14 +146,16 @@ async function uploadPdf(
   name: string,
   parentId: string,
 ): Promise<{ id: string; name: string }> {
-  const { Readable } = await import('node:stream');
-  const stream = Readable.from(buf);
-  const created = await drive.files.create({
-    requestBody: { name, parents: [parentId] },
-    media: { mimeType: 'application/pdf', body: stream },
-    fields: 'id, name',
+  return withRetry(`upload ${name}`, async () => {
+    const { Readable } = await import('node:stream');
+    const stream = Readable.from(buf);
+    const created = await drive.files.create({
+      requestBody: { name, parents: [parentId] },
+      media: { mimeType: 'application/pdf', body: stream },
+      fields: 'id, name',
+    });
+    return { id: created.data.id!, name: created.data.name! };
   });
-  return { id: created.data.id!, name: created.data.name! };
 }
 
 // 해설지 PDF는 비공개 유지. 사이트는 /api/explanation 프록시(로그인+수신동의 검증)를
@@ -215,10 +237,12 @@ interface SignalConfig {
 const SIGNALS: SignalConfig[] = [
   {
     // "문 제 N." — 최신 합숙/기출/모의. 두 자리 숫자는 "1 0 ." 처럼 자릿수 사이 공백 변형 가능.
-    // 페이지 시작 부분(첫 400자)만 검색 + "문제" 직전 글자가 한글이면 제외("기출문제 2 4." 같은 합성어 false positive 차단).
+    // 페이지 시작 부분(첫 800자)만 검색 + "문제" 직전 글자가 한글이면 제외("기출문제 2 4." 같은 합성어 false positive 차단).
+    // (800: 앞 문항 꼬리가 페이지 상단을 차지해 마커가 400자 뒤로 밀리는 논술형 대응 — 140 합숙 1일차 2교시 Q6.
+    //  잘못 검출돼도 detectedNums 1..N 연속성 검사에서 걸러져 fallback 처리되므로 안전.)
     name: 'munje',
     extractNumbers: (text) => {
-      const head = text.slice(0, 400);
+      const head = text.slice(0, 800);
       const nums: number[] = [];
       const re = /문\s*제\s*((?:\d\s*){1,2})\./g;
       let m: RegExpExecArray | null;
@@ -733,6 +757,44 @@ const TEST_SPECS: TestSpec[] = [
     fileName: '[KPC기술사IMPACT실전모의고사]_제131회_해설집_202607_4교시.pdf',
     sourceType: '모의', round: '2026.07', certScope: '공통', session: '4', sessionPart: null,
     problemFilter: (p) => p.sourceType === '모의' && p.round === '2026.07' && p.session === '4',
+  },
+  // 합숙 140회 대비(2026.08) — 3일차 × (1교시 약술16 + 2교시 논술8). 138 합숙과 동일 "문 제 N." munje.
+  // 폴더 '140회 (2026-08)' → round '2026.08'. certScope '공통'.
+  {
+    fileId: '1yW0jRfBsNyZRFmIIVsGpyWgDUplGF4dR',
+    fileName: 'KPC 140회 대비 합숙해설집_1일차_1교시_통합.pdf',
+    sourceType: '합숙', round: '2026.08', certScope: '공통', session: '1일차', sessionPart: '1교시',
+    problemFilter: (p) => p.sourceType === '합숙' && p.round === '2026.08' && p.session === '1일차' && p.sessionPart === '1교시',
+  },
+  {
+    fileId: '1XRzzB1wvp8f9ydnbEqcWeY2hF904RKlM',
+    fileName: 'KPC 140회 대비 합숙해설집_1일차_2교시_통합.pdf',
+    sourceType: '합숙', round: '2026.08', certScope: '공통', session: '1일차', sessionPart: '2교시',
+    problemFilter: (p) => p.sourceType === '합숙' && p.round === '2026.08' && p.session === '1일차' && p.sessionPart === '2교시',
+  },
+  {
+    fileId: '13nFKu91PBiDLBUBGmqe7Cn-l3Cc7TUwz',
+    fileName: 'KPC 140회 대비 합숙해설집_2일차_1교시_통합.pdf',
+    sourceType: '합숙', round: '2026.08', certScope: '공통', session: '2일차', sessionPart: '1교시',
+    problemFilter: (p) => p.sourceType === '합숙' && p.round === '2026.08' && p.session === '2일차' && p.sessionPart === '1교시',
+  },
+  {
+    fileId: '14lbvuIEYgKKApFc68Q0NqQcIDFTQHW2Z',
+    fileName: 'KPC 140회 대비 합숙해설집_2일차_2교시_통합.pdf',
+    sourceType: '합숙', round: '2026.08', certScope: '공통', session: '2일차', sessionPart: '2교시',
+    problemFilter: (p) => p.sourceType === '합숙' && p.round === '2026.08' && p.session === '2일차' && p.sessionPart === '2교시',
+  },
+  {
+    fileId: '1q_eLXRZX4tEtzU6Thumnn8a29xh8GbQa',
+    fileName: 'KPC 140회 대비 합숙해설집_3일차_1교시_통합.pdf',
+    sourceType: '합숙', round: '2026.08', certScope: '공통', session: '3일차', sessionPart: '1교시',
+    problemFilter: (p) => p.sourceType === '합숙' && p.round === '2026.08' && p.session === '3일차' && p.sessionPart === '1교시',
+  },
+  {
+    fileId: '15ch19zIL30-2d66BEbvIVhluU6STil_S',
+    fileName: 'KPC 140회 대비 합숙해설집_3일차_2교시_통합.pdf',
+    sourceType: '합숙', round: '2026.08', certScope: '공통', session: '3일차', sessionPart: '2교시',
+    problemFilter: (p) => p.sourceType === '합숙' && p.round === '2026.08' && p.session === '3일차' && p.sessionPart === '2교시',
   },
 ];
 
