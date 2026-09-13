@@ -394,7 +394,7 @@ build.ts가 `problem.questionNumber`로 분할 PDF 우선 매핑, 없으면 통�
 
 ### 9.1 deploy-cloudflare.yml
 - **트리거**: main push / 수동
-- **동작**: setup-pages → npm ci → npm run build → wrangler pages deploy
+- **동작**: npm ci → **unit 테스트(실패 시 배포 중단)** → npm run build → 시크릿 주입 → wrangler pages deploy → 운영 반영 대기(problems.json + JS 번들 목록이 dist와 일치) → **live 테스트**
 - **소요**: 1~2분
 
 ### 9.2 sync-drive.yml
@@ -524,7 +524,9 @@ build.ts가 `problem.questionNumber`로 분할 PDF 우선 매핑, 없으면 통�
 - **증상**: 예전 방문자는 새로고침해도 신규 회차(140회 기출·합숙 2026.08) 카드가 안 보임. 서버 데이터는 정상.
 - **원인**: `data-loader`가 `force-cache`로 브라우저 캐시의 옛 problems.json을 재검증 없이 사용 + 버전 고정 sessionStorage(데이터가 quota 초과라 실제론 저장 실패).
 - **수정**: `cache: 'no-cache'`(ETag 재검증, 미변경 시 304) + sessionStorage 제거. `/api/me`, `/api/admin/users(.csv)`에 `private, no-store` 추가(사용자별 응답 캐시 금지).
-- **테스트**: `tests/` (unit 13 / e2e 3 / live 10). e2e는 수정 전 코드로 빌드 시 3건 모두 실패 → 수정 후 통과로 버그 재현력 확인.
+- **테스트**: `tests/` (unit 13 / e2e 3 / live 11). e2e는 수정 전 코드로 빌드 시 3건 모두 실패 → 수정 후 통과로 버그 재현력 확인.
+- **CI 연동**: deploy-cloudflare가 배포 전 unit, 배포 후 live 실행 (e2e는 로컬 전용).
+- **캐시 헤더**: `public/_headers`로 `/_astro/*`(해시 파일명)만 `max-age=31536000, immutable`. HTML·`/data/*`는 기본 `max-age=0, must-revalidate` 유지 — 이 둘에 장기 캐시를 걸면 같은 장애가 재발하므로 금지.
 
 **알려진 한계**:
 - 일부 옛 합숙(2010년대) PDF는 풀이지 형식 불규칙 → fallback (통합 PDF로 정상 표시)

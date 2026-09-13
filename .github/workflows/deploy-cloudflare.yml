@@ -26,6 +26,10 @@ jobs:
 
       - run: npm ci
 
+      # 로더 캐시 정책·API 게이트 회귀 테스트 (네트워크 없음). 실패 시 배포 중단.
+      - name: Unit tests
+        run: npm test
+
       - name: Build
         env:
           SITE_URL: https://kpcitpe-search.pages.dev
@@ -52,3 +56,25 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           wranglerVersion: '3.114.1'
           command: pages deploy dist --project-name=kpcitpe-search --branch=main --commit-dirty=true
+
+      # 운영 주소가 이번 빌드를 서빙할 때까지 대기: problems.json 내용 + index.html의 JS 번들 목록이
+      # 방금 빌드한 dist와 같아지면 반영된 것으로 봄 (데이터만/코드만 바뀐 배포 모두 감지)
+      - name: Wait for production to serve this build
+        run: |
+          set -uo pipefail
+          SITE=https://kpcitpe-search.pages.dev
+          want_js=$(grep -oE '/_astro/[^"]+\.js' dist/index.html | sort -u)
+          for i in $(seq 1 24); do
+            live_js=$(curl -sf "$SITE/" | grep -oE '/_astro/[^"]+\.js' | sort -u)
+            if [ "$live_js" = "$want_js" ] && curl -sf "$SITE/data/problems.json" | cmp -s - dist/data/problems.json; then
+              echo "운영 반영 확인 (${i}번째 확인)"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::2분 안에 운영 주소에 이번 빌드가 반영되지 않음"
+          exit 1
+
+      # 운영 캐시 헤더·번들 반영·데이터(방금 빌드한 data/problems.json과 회차별 비교)·API 게이트 점검
+      - name: Live tests
+        run: npm run test:live

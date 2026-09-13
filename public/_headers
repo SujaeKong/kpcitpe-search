@@ -1,0 +1,5 @@
+# Cloudflare Pages 응답 헤더 (빌드 시 dist/_headers로 복사)
+# /_astro/* 는 Vite가 내용 해시를 파일명에 붙이므로 내용이 바뀌면 이름도 바뀜 → 장기 캐시 안전.
+# HTML, /data/* 는 기본값(max-age=0, must-revalidate) 유지 — 새 배포가 새로고침 즉시 보이도록.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable

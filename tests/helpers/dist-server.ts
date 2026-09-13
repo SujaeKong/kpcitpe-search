@@ -1,6 +1,7 @@
 /**
  * e2e용 로컬 정적 서버 — 빌드 결과(dist/)를 Cloudflare Pages와 같은 캐시 정책으로 서빙.
- * - 모든 정적 파일: Cache-Control: public, max-age=0, must-revalidate + ETag (If-None-Match → 304)
+ * - 정적 파일: Cache-Control: public, max-age=0, must-revalidate + ETag (If-None-Match → 304)
+ * - /_astro/*: public/_headers와 같은 장기 캐시(immutable)
  * - /data/problems.json 내용은 setProblems()로 교체 가능 (= 새 데이터 배포 시뮬레이션)
  * - /api/me 는 비로그인 응답으로 고정
  */
@@ -69,7 +70,10 @@ export async function startDistServer(distDir: string): Promise<DistServer> {
     if (pathname === '/data/problems.json') problemsStatuses.push(status);
     res.writeHead(status, {
       'content-type': CONTENT_TYPES[ext] ?? 'application/octet-stream',
-      'cache-control': 'public, max-age=0, must-revalidate',
+      // public/_headers와 동일: 해시 파일명 자산만 장기 캐시, 나머지는 매번 재검증
+      'cache-control': pathname.startsWith('/_astro/')
+        ? 'public, max-age=31536000, immutable'
+        : 'public, max-age=0, must-revalidate',
       etag,
     });
     res.end(status === 304 ? undefined : body);

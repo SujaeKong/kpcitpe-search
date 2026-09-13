@@ -95,6 +95,14 @@ describe(`캐시 정책 (${BASE})`, () => {
     const forceCache = [...seen].filter(([, code]) => code.includes('force-cache')).map(([a]) => a);
     expect(forceCache).toEqual([]);
   });
+
+  it('L11: 해시 파일명 자산(/_astro/*)은 장기 캐시(immutable)된다 — public/_headers', async () => {
+    const asset = indexHtml.match(/\/_astro\/[\w.-]+\.js/)?.[0];
+    expect(asset).toBeTruthy();
+    const cacheControl = (await fetch(`${BASE}${asset}`, { method: 'HEAD' })).headers.get('cache-control') ?? '';
+    expect(cacheControl).toMatch(/immutable/);
+    expect(Number(cacheControl.match(/max-age=(\d+)/)?.[1] ?? 0)).toBeGreaterThanOrEqual(86_400);
+  });
 });
 
 describe('운영 데이터', () => {

@@ -12,6 +12,7 @@
 
 ## 언제 돌리나
 
+- **자동 (CI)**: `deploy-cloudflare.yml`이 배포 전 `npm test`(실패 시 배포 중단), 배포 후 운영 반영을 기다렸다가 `npm run test:live`(실패 시 워크플로 빨간불 — 배포는 이미 나간 상태)를 실행
 - **캐시·데이터 로딩·API 코드를 고쳤을 때**: `npm test` + `npm run test:e2e`
 - **신규 회차 엑셀/해설지 반영 후 배포가 끝났을 때**: `npm run build:data` → `npm run test:live`
   (L6이 로컬 빌드와 운영 데이터의 회차별 문항 수를 비교해 배포 누락·지연을 잡음)
@@ -64,3 +65,4 @@ dist/를 Cloudflare Pages와 같은 헤더(`max-age=0, must-revalidate` + ETag)�
 | L8 | `/api/me` 비로그인 → `user:null`, `no-store` |
 | L9 | `/api/explanation` 비로그인 → 401 |
 | L10 | `/api/admin/users`, `users.csv` 비로그인 → 403 |
+| L11 | `/_astro/*` 자산은 `immutable` 장기 캐시 (`public/_headers`) |
