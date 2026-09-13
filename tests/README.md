@@ -156,7 +156,7 @@
 ### live/deploy.test.ts — 운영 사이트
 | ID | 내용 |
 |---|---|
-| L1–L3 | index.html·problems.json 매번 재검증 + ETag, 조건부 요청 304 |
+| L1–L3 | index.html·problems.json 매번 재검증 + ETag, 조건부 요청 304 (배포 전파 중엔 최신 ETag로 재시도) |
 | L4 | 배포 JS 전부 200, 로더 번들 `no-cache`·`force-cache` 없음 |
 | L5–L7 | 데이터 무결성, 로컬 빌드와 회차별 문항 수 일치, 최신 회차 페이지 |
 | L8–L10 | `/api/me` no-store, 해설지 401, 관리자 403 |
