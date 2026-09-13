@@ -41,6 +41,7 @@
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^5.7.284",
     "playwright": "^1.63.0",
+    "sql.js": "^1.14.2",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3",
     "vitest": "^3.2.7",

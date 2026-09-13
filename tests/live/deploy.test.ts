@@ -151,6 +151,36 @@ describe('운영 데이터', () => {
   });
 });
 
+describe('운영 설정', () => {
+  it('L12: 네이버 로그인은 운영 콜백 주소·client_id로 보내고 state 쿠키는 HttpOnly·Secure·Lax·10분', async () => {
+    const res = await fetch(`${BASE}/api/auth/naver/login?return=${encodeURIComponent('/rounds/')}`, { redirect: 'manual' });
+    expect(res.status).toBe(302);
+    const location = new URL(res.headers.get('location')!);
+    expect(location.origin + location.pathname).toBe('https://nid.naver.com/oauth2.0/authorize');
+    expect(location.searchParams.get('client_id')).toBeTruthy();
+    expect(location.searchParams.get('redirect_uri')).toBe(`${BASE}/api/auth/naver/callback`);
+    expect(location.searchParams.get('state')).toMatch(/^[0-9a-f]{32}$/);
+    expect(res.headers.get('set-cookie')).toMatch(/^kpc_oauth_state=[^;]+; Path=\/; HttpOnly; Secure; SameSite=Lax; Max-Age=600/);
+  });
+
+  it('L13: 없는 페이지·없는 회차는 404 (index.html로 200 응답하는 소프트 404 방지)', async () => {
+    for (const target of ['/nope-page-for-test', `/rounds/${encodeURIComponent('모의')}/1999.01/`]) {
+      const res = await fetch(`${BASE}${target}`);
+      expect(res.status, target).toBe(404);
+      expect(await res.text(), target).toContain('페이지를 찾을 수 없습니다');
+    }
+  });
+
+  it('L14: robots.txt·favicon 200, 관리자 페이지는 서버 렌더링으로 200', async () => {
+    expect((await fetch(`${BASE}/robots.txt`)).status).toBe(200);
+    const favicon = await fetch(`${BASE}/favicon.png`);
+    expect([favicon.status, favicon.headers.get('content-type')]).toEqual([200, 'image/png']);
+    const admin = await fetch(`${BASE}/admin`);
+    expect(admin.status).toBe(200);
+    expect(await admin.text()).toContain('사용자 관리');
+  });
+});
+
 describe('사용자별 API (비로그인)', () => {
   it('L8: /api/me → user:null, 캐시 금지(no-store)', async () => {
     const res = await fetch(`${BASE}/api/me`);

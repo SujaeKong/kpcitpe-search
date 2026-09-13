@@ -53,6 +53,11 @@ describe('dist/ 빌드 결과물', () => {
     expect(routes.exclude).toEqual(expect.arrayContaining(['/_astro/*', '/data/*', '/rounds/*']));
   });
 
+  it('O5: 404 페이지(dist/404.html)가 생성된다 — 없으면 Cloudflare Pages가 없는 주소에 index.html을 200으로 줌', () => {
+    const html = readFileSync(path.join(DIST_DIR, '404.html'), 'utf8');
+    expect(html).toContain('페이지를 찾을 수 없습니다');
+  });
+
   it('O4: 배포되는 dist/data/problems.json이 방금 빌드한 data/problems.json과 같다', () => {
     const built = fileURLToPath(new URL('../../data/problems.json', import.meta.url));
     expect(readFileSync(path.join(DIST_DIR, 'data/problems.json')).equals(readFileSync(built))).toBe(true);

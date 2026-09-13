@@ -79,6 +79,8 @@ export default function SearchBar({
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onFocus={() => setFocused(true)}
+        // 기록 항목을 고르면 드롭다운이 닫히지만 포커스는 입력창에 남아 onFocus가 다시 안 불림 → 클릭으로도 열기
+        onClick={() => setFocused(true)}
         placeholder={placeholder}
         className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-base shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
         aria-label="검색"

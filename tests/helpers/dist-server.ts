@@ -95,7 +95,14 @@ export async function startDistServer(distDir: string): Promise<DistServer> {
       }
     }
     if (!body) {
-      res.writeHead(404).end();
+      // Cloudflare Pages처럼 dist/404.html이 있으면 404 상태로 그 페이지를 준다
+      const notFound = path.join(root, '404.html');
+      if (existsSync(notFound)) {
+        res.writeHead(404, { 'content-type': CONTENT_TYPES['.html'] });
+        res.end(readFileSync(notFound));
+      } else {
+        res.writeHead(404).end();
+      }
       return;
     }
 

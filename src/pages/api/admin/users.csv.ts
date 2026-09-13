@@ -7,8 +7,10 @@ export const prerender = false;
 
 function csvEscape(v: string | number | null): string {
   if (v === null || v === undefined) return '';
-  const s = String(v);
-  if (/[",\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  let s = String(v);
+  // CSV Injection 방지: =·+·-·@·탭·CR로 시작하는 문자열(네이버 이름·이메일 등)은 엑셀이 수식으로 실행하므로 ' 접두
+  if (typeof v === 'string' && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
   return s;
 }
 

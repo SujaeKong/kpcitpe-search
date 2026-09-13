@@ -9,7 +9,7 @@
 | `e2e/` | 실제 Chrome 화면 흐름 + 빌드 결과물 | 빌드(스크립트에 포함) | `npm run test:e2e` |
 | `live/` | 운영 사이트 헤더·데이터·게이트 (읽기 전용) | 배포 완료 | `npm run test:live` |
 
-`helpers/`: `dist-server.ts`(Cloudflare Pages와 같은 캐시 헤더로 dist 서빙 + `/api/*` 대역), `browser.ts`(Chrome 실행), `api-context.ts`(API 핸들러 직접 호출), `fake-d1.ts`(D1 대역), `problem-fixture.ts`(문항 픽스처).
+`helpers/`: `dist-server.ts`(Cloudflare Pages와 같은 캐시 헤더로 dist 서빙 + `/api/*` 대역), `browser.ts`(Chrome 실행), `api-context.ts`(API 핸들러 직접 호출), `fake-d1.ts`(D1 대역), `sqlite-d1.ts`(sql.js 실제 SQLite D1 대역), `google-sa.ts`(서비스계정 RSA 키·Google fetch 대역), `problem-fixture.ts`(문항 픽스처).
 
 ## 언제 돌리나
 
@@ -114,6 +114,45 @@
 | H1–H4 | 공백 제거·2자 이상, 중복 앞으로, 최근 10개, 개별·전체 삭제 |
 | H5–H6 | 깨진 저장값 복구, localStorage 차단 환경에서도 예외 없음 |
 
+### unit/google-drive.test.ts — 서비스계정 Drive 접근
+| ID | 내용 |
+|---|---|
+| G1 | RS256 JWT(iss·drive.readonly·aud·1시간) 서명을 실제 공개키로 검증, 토큰 교환 후 Bearer로 files.get(alt=media) |
+| G2–G3 | 토큰 재사용, 만료 1분 이내면 재교환 |
+| G4–G5 | SA 미설정·필드 누락·교환 실패 에러, fileId URL 인코딩 |
+
+### unit/explanation-api.test.ts — 해설지 프록시 (게이트 통과 후)
+| ID | 내용 |
+|---|---|
+| A9 | PDF 스트리밍 + `inline`·`private, no-store`·`nosniff` |
+| A10 | Drive 실패 → 502, Drive 오류 내용 노출 X |
+| A11 | fileId 없음·형식 오류 → 400, Drive 미호출 |
+| A12 | SA 미설정·토큰 교환 실패 → 500 |
+
+### unit/admin-api.test.ts — 관리자 통계·CSV
+| ID | 내용 |
+|---|---|
+| C1 | 최근 7일 신규 경계, 동의자 수 |
+| C2 | UTF-8 BOM, 전체/동의자 헤더, 날짜 파일명 |
+| C3 | 쉼표·따옴표·줄바꿈 이스케이프 |
+| C4 | `=`·`+`·`-`·`@` 시작 값 `'` 접두 (CSV Injection 방지) — 2026-09-14 발견·수정 |
+
+### unit/db-sql.test.ts — 사용자 DB SQL (sql.js로 실제 SQLite 실행)
+| ID | 내용 |
+|---|---|
+| Q1 | 스키마·인덱스 생성, 재호출 안전 |
+| Q2–Q3 | 신규 upsert 시각, 재로그인 시 가입 시각 유지·이메일 null이면 기존 값(COALESCE)·행 1개 |
+| Q4 | 수신동의 1+시각 / 철회 0+null, 다른 사용자 영향 없음 |
+| Q5 | 관리자 동의자 CSV가 실제 SQL로 동의자만 가입 최신순 |
+
+### unit/highlighted-text.test.ts — 검색어 하이라이트
+| ID | 내용 |
+|---|---|
+| T1 | 매치 없으면 이스케이프된 원문, windowed 자르기 |
+| T2 | `<mark>` 구간 병합 |
+| T3 | 긴 본문 뒤쪽 매치는 앞뒤 `…` + maxLength 창 |
+| T4 | findIndicesForKey |
+
 ### data/data-integrity.test.ts — 운영 데이터·매핑
 | ID | 내용 |
 |---|---|
@@ -126,6 +165,8 @@
 | D12 | 모의 매핑 키 `교시`/`교시_종목`, 종목 키 = 파일명 종목 |
 | D13 | 연결된 분할본 파일명 주제어가 문항 제목·본문에 있음 |
 | D14 | 모의 해설집 파일명 회차 번호 ↔ 매핑 연월 1:1 (연월 오기 파일 오매핑 감지) |
+| D15 | stats.json 출처·종목·학원·회차별 건수 = 문항 데이터 |
+| D16 | 모든 문항이 최신 버전 엑셀에서 옴 (옛 누적본 중복 채택 방지) |
 
 ### e2e/stale-data.test.ts — 캐시 시나리오
 | ID | 내용 |
@@ -146,12 +187,24 @@
 | E8 | 회차 목록 → 최신 합숙 회차 페이지 문항 수 일치 |
 | E9 | 회차 페이지 카드(client:visible)도 해설지 게이트 동작 |
 
+### e2e/ui-more.test.ts — 화면 흐름 (2)
+| ID | 내용 |
+|---|---|
+| E10 | 검색 입력 → URL q·결과 수·`<mark>` 반영, 1.5초 뒤 기록 저장 → 새로고침 후 기록 선택·재클릭 시 드롭다운 다시 열림·전체 지우기 (재클릭 버그 2026-09-14 수정) |
+| E11 | 처음 30건, 더 보기로 60건, 200건 초과 안내 |
+| E12 | 모바일 필터 drawer 칩 선택 → 닫기 → URL·필터 개수 배지 |
+| E13 | 모바일 동의 사용자 해설지는 모달 대신 새 탭(서버 프록시) |
+| E14 | 비로그인 로그인 링크 return=현재 경로·검색어 |
+| E15 | 로그인 메뉴 수신동의 체크 → consent API → 체크 상태, 로그아웃 링크 |
+| E16 | 없는 페이지·회차 → 404 상태 + 안내·링크 |
+
 ### e2e/build-output.test.ts — 빌드 결과물
 | ID | 내용 |
 |---|---|
 | O1–O2 | 모든 회차 페이지 생성 + "총 N건" 일치, 회차 목록 링크 누락 없음 |
 | O3 | `_headers`는 `/_astro/*`만 장기 캐시, `_routes.json`이 정적 자산을 워커에서 제외 |
 | O4 | `dist/data/problems.json` = 방금 빌드한 데이터 |
+| O5 | `dist/404.html` 생성 (없으면 Cloudflare Pages가 없는 주소에 index.html을 200으로 줌) |
 
 ### live/deploy.test.ts — 운영 사이트
 | ID | 내용 |
@@ -161,3 +214,6 @@
 | L5–L7 | 데이터 무결성, 로컬 빌드와 회차별 문항 수 일치, 최신 회차 페이지 |
 | L8–L10 | `/api/me` no-store, 해설지 401, 관리자 403 |
 | L11 | `/_astro/*` immutable 장기 캐시 |
+| L12 | 네이버 로그인 302: 운영 콜백 주소·client_id·state, state 쿠키 HttpOnly·Secure·Lax·10분 |
+| L13 | 없는 페이지·회차 404 (소프트 404 방지) |
+| L14 | robots.txt·favicon 200, `/admin` 서버 렌더링 200 |

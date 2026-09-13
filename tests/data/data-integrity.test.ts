@@ -2,11 +2,12 @@
  * 빌드된 운영 데이터(data/problems.json) + 해설지 매핑(explanation-files.json) 무결성.
  * 먼저 `npm run build:data`. CI에서는 빌드 직후 실행되어 실패 시 배포를 막는다.
  */
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { kichulRoundOrder } from '../../scripts/adapters/kpc-xls-adapter';
-import { applyExplanationMap, splitMatchesProblem, type ExplanationEntry, type ExplanationMap } from '../../scripts/build';
+import { applyExplanationMap, pickLatestVersions, splitMatchesProblem, type ExplanationEntry, type ExplanationMap } from '../../scripts/build';
 import { mouiFileCert, NO_RESPLIT_KEYS } from '../../scripts/lib/explanation-keys';
 import { isValidDriveFileId } from '../../src/lib/google-drive';
 import type { Problem } from '../../src/lib/types';
@@ -209,5 +210,32 @@ describe('해설지 매핑 무결성', () => {
       ...[...roundToNums].filter(([, ns]) => ns.size > 1).map(([r, ns]) => `${r} ← 제${[...ns].join('·')}회`),
     ];
     expect(conflicts).toEqual([]);
+  });
+});
+
+describe('빌드 산출물 일관성', () => {
+  const countBy = (key: (p: Problem) => string) =>
+    problems.reduce<Record<string, number>>((acc, p) => {
+      acc[key(p)] = (acc[key(p)] ?? 0) + 1;
+      return acc;
+    }, {});
+
+  it('D15: stats.json의 출처·종목·학원·회차별 건수가 문항 데이터와 같다', () => {
+    expect(stats.bySourceType).toEqual(countBy((p) => p.sourceType));
+    expect(stats.byCertScope).toEqual(countBy((p) => p.certScope));
+    expect(stats.byAcademy).toEqual(countBy((p) => p.academy ?? '(없음)'));
+    const byRound: Record<string, Record<string, number>> = {};
+    for (const p of problems) {
+      const rounds = (byRound[p.sourceType] ??= {});
+      rounds[p.round] = (rounds[p.round] ?? 0) + 1;
+    }
+    expect(stats.byRound).toEqual(byRound);
+  });
+
+  it('D16: 모든 문항이 최신 버전 엑셀에서 왔다 (옛 누적본까지 읽어 문항이 부풀지 않음)', () => {
+    const dir = file('data/source/kpc');
+    const sources = readdirSync(dir).filter((f) => /\.xlsx?$/i.test(f)).map((f) => path.join(dir, f));
+    const picked = new Set(pickLatestVersions(sources).picked.map((f) => path.basename(f)));
+    expect(new Set(problems.map((p) => p.sourceFile))).toEqual(picked);
   });
 });
