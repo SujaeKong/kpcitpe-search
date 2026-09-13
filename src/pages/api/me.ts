@@ -4,11 +4,14 @@ import { getDB, getUserByNaverId } from '../../lib/db';
 
 export const prerender = false;
 
+// 사용자별 응답 — 로그인/로그아웃/동의 직후 캐시에 남은 옛 상태가 보이지 않도록 비저장
+const NO_STORE = { 'cache-control': 'private, no-store' };
+
 export const GET: APIRoute = async ({ locals, request }) => {
   const env = getEnv(locals);
   const sessionUser = await readSessionUser(request, env);
   if (!sessionUser) {
-    return Response.json({ user: null });
+    return Response.json({ user: null }, { headers: NO_STORE });
   }
 
   // DB에서 marketing_consent 등 보강 정보 조회
@@ -31,5 +34,5 @@ export const GET: APIRoute = async ({ locals, request }) => {
       email: sessionUser.email,
       marketingConsent,
     },
-  });
+  }, { headers: NO_STORE });
 };

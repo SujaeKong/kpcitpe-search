@@ -63,6 +63,7 @@ export const GET: APIRoute = async ({ locals, request, url }) => {
     headers: {
       'content-type': 'text/csv; charset=utf-8',
       'content-disposition': `attachment; filename="${filename}"`,
+      'cache-control': 'private, no-store', // 개인정보 — 캐시 금지
     },
   });
 };

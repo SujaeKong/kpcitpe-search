@@ -37,8 +37,11 @@ export const GET: APIRoute = async ({ locals, request }) => {
   const sevenDaysAgo = Math.floor(Date.now() / 1000) - 60 * 60 * 24 * 7;
   const recentCount = rows.results.filter((r) => r.joined_at >= sevenDaysAgo).length;
 
-  return Response.json({
-    stats: { total, consentCount, recentCount },
-    users: rows.results,
-  });
+  return Response.json(
+    {
+      stats: { total, consentCount, recentCount },
+      users: rows.results,
+    },
+    { headers: { 'cache-control': 'private, no-store' } }, // 개인정보 — 캐시 금지
+  );
 };

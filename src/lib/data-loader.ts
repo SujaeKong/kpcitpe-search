@@ -5,7 +5,7 @@
  * - 같은 페이지 안의 중복 호출은 inflight promise로 1회만 요청
  * - 빌드 결과 BASE_URL 하위에 위치 → import.meta.env.BASE_URL 기준 절대 경로 사용
  *
- * 과거의 cache: 'force-cache' + 버전 고정 sessionStorage 캐시는 새로고침해도 옛 데이터를
+ * 과거의 강제 캐시 모드(재검증 없이 캐시 사용) + 버전 고정 sessionStorage 캐시는 새로고침해도 옛 데이터를
  * 계속 보여줘(신규 회차 카드 미노출) 제거함. sessionStorage는 데이터(~7.4M자)가 quota를 넘어
  * 저장도 되지 않고 매번 직렬화 비용만 들었음.
  */

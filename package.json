@@ -13,6 +13,9 @@
     "split:debug": "tsx scripts/debug-pdf-text.ts",
     "split:diag": "tsx scripts/debug-multi.ts",
     "preview": "astro preview",
+    "test": "vitest run --config tests/vitest.config.ts tests/unit",
+    "test:e2e": "npm run build && vitest run --config tests/vitest.config.ts tests/e2e",
+    "test:live": "vitest run --config tests/vitest.config.ts tests/live",
     "astro": "astro"
   },
   "dependencies": {
@@ -35,8 +38,10 @@
     "googleapis": "^144.0.0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^5.7.284",
+    "playwright": "^1.63.0",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3",
+    "vitest": "^3.2.7",
     "xlsx": "^0.18.5"
   }
 }

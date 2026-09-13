@@ -43,6 +43,7 @@
 | 해설지 읽기 인증 | Service Account (drive.readonly, RS256 JWT in Worker) | 통합본+분할본 전부 읽음. `src/lib/google-drive.ts` |
 | 자동화 | GitHub Actions | deploy-cloudflare + sync-drive + split-pdfs + rename-hapsuk |
 | PDF 분할 | pdfjs-dist + pdf-lib + Google OAuth Delegation | 통합 PDF → 문항별 PDF 자동 분할 (CI에서만, 사용자 Drive에 업로드) |
+| 테스트 | Vitest + Playwright(설치된 Chrome) | `tests/` — unit / e2e / live. 로컬 실행 전용(CI 미연동). `tests/README.md` |
 
 ---
 
@@ -97,6 +98,12 @@ kpcitpe-search/
 │           ├── auth/logout.ts
 │           ├── admin/users.ts              사용자 list (admin)
 │           └── admin/users.csv.ts          CSV 다운로드 (admin)
+├── tests/                      재사용 테스트 (README.md에 케이스 목록)
+│   ├── unit/                   로더 + API 핸들러 (npm test)
+│   ├── e2e/                    실제 Chrome 캐시 시나리오 (npm run test:e2e)
+│   ├── live/                   운영 사이트 점검 (npm run test:live)
+│   ├── helpers/                dist 정적 서버, D1 대역
+│   └── vitest.config.ts
 ├── .github/workflows/
 │   ├── deploy-cloudflare.yml   엑셀 push → 빌드 → Cloudflare 배포
 │   ├── sync-drive.yml          매일 KST 03:00 + 수동, split-pdfs 자동 트리거
@@ -513,6 +520,12 @@ build.ts가 `problem.questionNumber`로 분할 PDF 우선 매핑, 없으면 통�
 
 **⚠️ 옛 회차 분할 정렬 오류 → 통합본 폴백 (2026-06)**: 옛 2008~2010년대 형식에서 문항↔내용이 한 칸씩 어긋나는 분할이 발견됨 (예: 87회 1교시 Q2 클릭 시 1번 해설 노출 — 엑셀 문제번호와 PDF 물리 순서 불일치 + 마커 검출 off-by-one). best-offset 검증(본문 vs ±2 문제제목 매칭)으로 일관되게 어긋난 **12개 회차의 `questions`를 제거해 통합본(전체 PDF)으로 폴백**: 기출 87/1정·93/3정·93/4정·105/4컴, 모의 2010.10/1·2012.04/3·4·2012.12/2·2013.05/3·2014.04/2·2022.11/3·2023.11/4. **이 회차들은 옛 형식 검출 off-by-one을 고치기 전까지 재분할(split-pdfs) 금지** — 재분할하면 다시 어긋남. (정렬 검증 방법: SA로 분할본 1페이지 텍스트 추출 → 문제제목 토큰 매칭 best-offset.)
 
+### 캐시 품질 수정 + 테스트 도입 (2026-09-12~13)
+- **증상**: 예전 방문자는 새로고침해도 신규 회차(140회 기출·합숙 2026.08) 카드가 안 보임. 서버 데이터는 정상.
+- **원인**: `data-loader`가 `force-cache`로 브라우저 캐시의 옛 problems.json을 재검증 없이 사용 + 버전 고정 sessionStorage(데이터가 quota 초과라 실제론 저장 실패).
+- **수정**: `cache: 'no-cache'`(ETag 재검증, 미변경 시 304) + sessionStorage 제거. `/api/me`, `/api/admin/users(.csv)`에 `private, no-store` 추가(사용자별 응답 캐시 금지).
+- **테스트**: `tests/` (unit 13 / e2e 3 / live 10). e2e는 수정 전 코드로 빌드 시 3건 모두 실패 → 수정 후 통과로 버그 재현력 확인.
+
 **알려진 한계**:
 - 일부 옛 합숙(2010년대) PDF는 풀이지 형식 불규칙 → fallback (통합 PDF로 정상 표시)
 - 가드가 까다로워서 문항이 많은 일부 회차(예: 13개 중 12개만 검출)도 fallback. 안전성 우선.
@@ -551,6 +564,13 @@ npm run dev          # http://localhost:4321
 npm run build:data   # data/problems.json 생성
 npm run build        # 데이터 + 사이트
 npm run preview
+```
+
+### 테스트 (`tests/README.md`)
+```bash
+npm test             # unit: 로더·API 캐시 정책/게이트 (네트워크 없음)
+npm run test:e2e     # 빌드 후 실제 Chrome으로 "방문→배포→새로고침" 신규 카드 노출 확인
+npm run build:data && npm run test:live   # 배포 후 운영 헤더·데이터·게이트 점검
 ```
 
 ### Sync
