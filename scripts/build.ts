@@ -65,7 +65,7 @@ function listFiles(dir: string, exts: string[]): string[] {
  * KPC 엑셀은 누적본이라 옛 버전을 같이 두면 데이터가 2배로 부풀므로 스킵.
  * 버전 suffix 없는 파일은 그대로 포함.
  */
-function pickLatestVersions(files: string[]): { picked: string[]; skipped: string[] } {
+export function pickLatestVersions(files: string[]): { picked: string[]; skipped: string[] } {
   const VERSIONED = /^(.+?)_v(\d+)\.(xls|xlsx)$/i;
   const groups = new Map<string, { file: string; version: number }>();
   const unversioned: string[] = [];
@@ -118,13 +118,13 @@ async function runAdapter(
 
 // ===== 해설지 매핑 적용 =====
 
-interface ExplanationEntry {
+export interface ExplanationEntry {
   id: string;
   name?: string;
   questions?: Record<string, { id: string; name?: string }>;
 }
 
-interface ExplanationMap {
+export interface ExplanationMap {
   기출?: Record<string, Record<string, ExplanationEntry>>;
   합숙?: Record<string, Record<string, ExplanationEntry>>;
   모의?: Record<string, Record<string, Record<string, ExplanationEntry>>>;
@@ -157,7 +157,7 @@ function loadExplanationMap(): ExplanationMap {
  *   모의:  {academy}.{round}.{session}
  *   자체:  {academy}.{round}.{session}
  */
-function applyExplanationMap(problems: Problem[], map: ExplanationMap): number {
+export function applyExplanationMap(problems: Problem[], map: ExplanationMap): number {
   let matched = 0;
   for (const p of problems) {
     let entry: ExplanationEntry | undefined;
@@ -410,7 +410,10 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error('빌드 실패:', err);
-  process.exit(1);
-});
+// 직접 실행(tsx scripts/build.ts)일 때만 빌드 — 테스트에서 import할 때는 실행하지 않음
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  main().catch((err) => {
+    console.error('빌드 실패:', err);
+    process.exit(1);
+  });
+}

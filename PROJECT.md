@@ -43,7 +43,7 @@
 | 해설지 읽기 인증 | Service Account (drive.readonly, RS256 JWT in Worker) | 통합본+분할본 전부 읽음. `src/lib/google-drive.ts` |
 | 자동화 | GitHub Actions | deploy-cloudflare + sync-drive + split-pdfs + rename-hapsuk |
 | PDF 분할 | pdfjs-dist + pdf-lib + Google OAuth Delegation | 통합 PDF → 문항별 PDF 자동 분할 (CI에서만, 사용자 Drive에 업로드) |
-| 테스트 | Vitest + Playwright(설치된 Chrome) | `tests/` — unit / e2e / live. 로컬 실행 전용(CI 미연동). `tests/README.md` |
+| 테스트 | Vitest + Playwright(설치된 Chrome) | `tests/` — unit / data / e2e / live. CI는 unit·data(배포 전)·live(배포 후), e2e는 로컬. `tests/README.md` |
 
 ---
 
@@ -99,10 +99,11 @@ kpcitpe-search/
 │           ├── admin/users.ts              사용자 list (admin)
 │           └── admin/users.csv.ts          CSV 다운로드 (admin)
 ├── tests/                      재사용 테스트 (README.md에 케이스 목록)
-│   ├── unit/                   로더 + API 핸들러 (npm test)
-│   ├── e2e/                    실제 Chrome 캐시 시나리오 (npm run test:e2e)
+│   ├── unit/                   로더·검색·정규화·빌드 매핑·인증·API (npm test)
+│   ├── data/                   빌드 데이터·해설지 매핑 무결성 (npm run test:data)
+│   ├── e2e/                    실제 Chrome 캐시·화면 흐름 + 빌드 결과물 (npm run test:e2e)
 │   ├── live/                   운영 사이트 점검 (npm run test:live)
-│   ├── helpers/                dist 정적 서버, D1 대역
+│   ├── helpers/                dist 서버+API 대역, 브라우저, API 호출, D1 대역, 픽스처
 │   └── vitest.config.ts
 ├── .github/workflows/
 │   ├── deploy-cloudflare.yml   엑셀 push → 빌드 → Cloudflare 배포
@@ -394,7 +395,7 @@ build.ts가 `problem.questionNumber`로 분할 PDF 우선 매핑, 없으면 통�
 
 ### 9.1 deploy-cloudflare.yml
 - **트리거**: main push / 수동
-- **동작**: npm ci → **unit 테스트(실패 시 배포 중단)** → npm run build → 시크릿 주입 → wrangler pages deploy → 운영 반영 대기(problems.json + JS 번들 목록이 dist와 일치) → **live 테스트**
+- **동작**: npm ci → **unit 테스트** → npm run build → **data 무결성 테스트** (둘 다 실패 시 배포 중단) → 시크릿 주입 → wrangler pages deploy → 운영 반영 대기(problems.json + JS 번들 목록이 dist와 일치) → **live 테스트**
 - **소요**: 1~2분
 
 ### 9.2 sync-drive.yml
@@ -528,6 +529,12 @@ build.ts가 `problem.questionNumber`로 분할 PDF 우선 매핑, 없으면 통�
 - **CI 연동**: deploy-cloudflare가 배포 전 unit, 배포 후 live 실행 (e2e는 로컬 전용).
 - **캐시 헤더**: `public/_headers`로 `/_astro/*`(해시 파일명)만 `max-age=31536000, immutable`. HTML·`/data/*`는 기본 `max-age=0, must-revalidate` 유지 — 이 둘에 장기 캐시를 걸면 같은 장애가 재발하므로 금지.
 
+### 테스트 확장 + 인증 결함 수정 (2026-09-13)
+- **테스트**: unit 77 / data 13 / e2e 13 / live 11. 검색·정규화·빌드 매핑·인증 흐름·데이터 무결성·화면 흐름 추가. 테스트에서 import하도록 어댑터 정규화 함수와 `build.ts`의 `pickLatestVersions`/`applyExplanationMap`을 export (`build.ts`는 직접 실행 시에만 `main()`).
+- **수정 — open redirect**: 로그아웃/로그인 콜백의 return 검사가 `startsWith('/')`뿐이라 `//evil.com`, `/\evil.com`, `/\t/evil.com`, `/..//evil.com`으로 외부 이동 가능 → `safeReturnPath()`(URL 해석 후 같은 origin만, 한글 인코딩)로 통일.
+- **수정 — 깨진 세션 쿠키 500**: 서명이 base64가 아닌 쿠키면 `verifyJwt`의 `atob` 예외로 `/api/me`·해설지 API가 500 → 형식 오류는 null(비로그인) 처리.
+- **발견 — 모의 해설지 종목 뒤섞임**: §16 참고. data 테스트 D12(건수 증가 감시)·D13(`it.fails`)으로 추적.
+
 **알려진 한계**:
 - 일부 옛 합숙(2010년대) PDF는 풀이지 형식 불규칙 → fallback (통합 PDF로 정상 표시)
 - 가드가 까다로워서 문항이 많은 일부 회차(예: 13개 중 12개만 검출)도 fallback. 안전성 우선.
@@ -570,8 +577,9 @@ npm run preview
 
 ### 테스트 (`tests/README.md`)
 ```bash
-npm test             # unit: 로더·API 캐시 정책/게이트 (네트워크 없음)
-npm run test:e2e     # 빌드 후 실제 Chrome으로 "방문→배포→새로고침" 신규 카드 노출 확인
+npm test             # unit: 로더·검색·정규화·빌드 매핑·인증·API (네트워크 없음)
+npm run build:data && npm run test:data   # 데이터 규칙 + 해설지 매핑 무결성 (재분할 금지 회차 포함)
+npm run test:e2e     # 빌드 후 실제 Chrome: 캐시 시나리오, 해설지 게이트, 필터, 회차 페이지
 npm run build:data && npm run test:live   # 배포 후 운영 헤더·데이터·게이트 점검
 ```
 
@@ -665,6 +673,7 @@ curl -X PATCH "https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/pages/
 - **wrangler 3.114.1**: pages 프로젝트는 wrangler.toml에 `[build]` 섹션 거부. 우리 `build` 섹션 제거됨.
 - **Cloudflare API token 권한**: 기본 Workers 템플릿엔 D1 권한 없음. D1 생성/마이그레이션은 대시보드 또는 권한 추가 토큰 필요.
 - **GitHub Pages**: 2026-05-05 비활성화. 외부 링크에 옛 URL 있으면 404.
+- **모의 옛 회차 해설지 종목 뒤섞임 (2026-09-13 발견, 미수정)**: 2010~2017년대 모의고사는 정보관리/컴시응 해설집이 교시별로 따로 있는데, `sync-drive-mappings.ts`가 모의를 `KPC/회차/교시` 한 키로 저장하고 먼저 찾은 파일만 남김. build는 문항번호로만 분할본을 고르므로 다른 종목 문항에 엉뚱한 해설이 연결됨. 50개 회차 1,495문항(분할본 273 + 통합본 1,222). 예: 모의 2016.07 3교시 정보관리 1번(AVL Tree) → 컴시응 1번(CPU 스케줄링) 분할본. 근본 수정은 sync 모의 키에 종목 포함 → build 조회 → split-pdfs 재분할 순서가 필요. data 테스트 D12/D13으로 추적.
 
 ---
 

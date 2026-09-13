@@ -57,12 +57,13 @@ export async function verifyJwt(token: string, secret: string): Promise<JwtPaylo
   const parts = token.split('.');
   if (parts.length !== 3) return null;
   const [headerB64, payloadB64, sigB64] = parts;
-  const data = `${headerB64}.${payloadB64}`;
-  const key = await importKey(secret);
-  const sig = base64UrlDecode(sigB64);
-  const valid = await crypto.subtle.verify('HMAC', key, sig.buffer as ArrayBuffer, TEXT_ENCODER.encode(data));
-  if (!valid) return null;
+  // 깨진 base64/JSON 등 형식 오류는 예외 대신 null — 이상한 쿠키 하나로 API가 500을 내지 않도록
   try {
+    const data = `${headerB64}.${payloadB64}`;
+    const key = await importKey(secret);
+    const sig = base64UrlDecode(sigB64);
+    const valid = await crypto.subtle.verify('HMAC', key, sig.buffer as ArrayBuffer, TEXT_ENCODER.encode(data));
+    if (!valid) return null;
     const payload = JSON.parse(new TextDecoder().decode(base64UrlDecode(payloadB64))) as JwtPayload;
     if (payload.exp < Math.floor(Date.now() / 1000)) return null;
     return payload;

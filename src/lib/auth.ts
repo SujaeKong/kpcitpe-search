@@ -66,3 +66,22 @@ export function setSessionCookieHeader(token: string): string {
 export function clearSessionCookieHeader(): string {
   return `${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
 }
+
+const RETURN_BASE = 'https://return.invalid';
+
+/**
+ * 로그인/로그아웃 후 돌아갈 경로 — 우리 사이트 내부 경로만 허용 (open redirect 차단).
+ * `//host`, `/\host`, `/\t/host`, `/..//host`처럼 브라우저가 외부 주소로 해석하는 값은 '/'로 대체하고,
+ * 한글 등 비ASCII는 퍼센트 인코딩해 Location 헤더에 안전하게 담는다.
+ */
+export function safeReturnPath(raw: string | null | undefined): string {
+  if (!raw || !raw.startsWith('/')) return '/';
+  try {
+    const url = new URL(raw, RETURN_BASE);
+    const path = `${url.pathname}${url.search}${url.hash}`;
+    if (url.origin !== RETURN_BASE || path.startsWith('//')) return '/';
+    return path;
+  } catch {
+    return '/';
+  }
+}

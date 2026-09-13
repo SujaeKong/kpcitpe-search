@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import {
   getEnv,
   makeSessionCookieValue,
+  safeReturnPath,
   setSessionCookieHeader,
   type AppUser,
 } from '../../../../lib/auth';
@@ -97,6 +98,6 @@ export const GET: APIRoute = async ({ locals, request }) => {
     'set-cookie',
     `${STATE_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
   );
-  headers.set('location', returnTo.startsWith('/') ? returnTo : '/');
+  headers.set('location', safeReturnPath(returnTo));
   return new Response(null, { status: 302, headers });
 };

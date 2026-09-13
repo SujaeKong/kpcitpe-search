@@ -256,7 +256,7 @@ function strOrNull(v: unknown): string | null {
  * 약간 어긋날 수 있지만 회차 N과 N+1의 상대 순서는 항상 단조 증가하므로
  * 정렬 목적으로는 정확함.
  */
-function kichulRoundOrder(n: number): number {
+export function kichulRoundOrder(n: number): number {
   const ANCHOR_ROUND = 138;
   const ANCHOR_YEAR = 2026;
   const MONTHS = [2, 5, 8] as const;
@@ -276,7 +276,7 @@ function kichulRoundOrder(n: number): number {
  *
  * 세 종류 모두 roundOrder는 동일 스케일(YYYYMMSS)이라 시간순 정렬 비교 가능.
  */
-function normalizeRound(
+export function normalizeRound(
   raw: string | null,
   sourceType: SourceType,
 ): { round: string; roundLabel: string; roundOrder: number } | null {
@@ -318,7 +318,7 @@ function normalizeRound(
  * 응용, 컴시응 → 컴시응
  * 공통, 조직, 보안 → 공통
  */
-function normalizeCertScope(raw: string | null): CertScope | null {
+export function normalizeCertScope(raw: string | null): CertScope | null {
   if (!raw) return null;
   const v = raw.trim();
   if (v === '관리' || v === '정보관리') return '정보관리';
@@ -332,7 +332,7 @@ function normalizeCertScope(raw: string | null): CertScope | null {
  * 합숙: 'Day-1' / '1일차' / '1' 모두 허용 → '1일차'로 통일 (§2.3 이슈 2).
  * 기출/모의: '1', '1교시' 등 → '1'로 통일.
  */
-function normalizeSession(
+export function normalizeSession(
   raw: string | null,
   sourceType: SourceType,
 ): { session: string; sessionType: SessionType } | null {
@@ -366,7 +366,7 @@ function normalizeSession(
  *  2) 'N-M[.] 제목'   → 하이픈 변형 (예: '1-2 ...')          메인=N, 서브=M
  *  3) 'N. 제목' / 'N.제목' → 일반 문항 (§2.3 이슈 3)         메인=N, 서브=null
  */
-function splitProblem(raw: string): {
+export function splitProblem(raw: string): {
   questionNumber: number | null;
   questionSubNumber: number | null;
   questionLabel: string;
@@ -435,7 +435,7 @@ function splitProblem(raw: string): {
 // 모의 자동순번 시 종목 정렬 순서 (통합 해설집 PDF가 공통→정보관리→컴시응 연속 번호이므로 일치)
 const MOUI_CERT_ORDER: Record<string, number> = { 공통: 0, 정보관리: 1, 컴시응: 2 };
 
-function autoAssignQuestionNumbers(sheetProblems: Problem[]): void {
+export function autoAssignQuestionNumbers(sheetProblems: Problem[]): void {
   const groups = new Map<string, Problem[]>();
   for (const p of sheetProblems) {
     // 모의는 한 교시 통합 해설집 PDF에 공통+정보관리+컴시응이 하나의 연속 번호(예: 공통 1~10,
@@ -508,7 +508,7 @@ function autoAssignQuestionNumbers(sheetProblems: Problem[]): void {
  *     - 9 ≤ 사이즈 ≤ 16  : 모두 1교시 (약술 단독)
  *     - 사이즈 ≥ 17      : 첫 13개 1교시, 나머지 2교시
  */
-function inferHapsukSessionParts(sheetProblems: Problem[]): void {
+export function inferHapsukSessionParts(sheetProblems: Problem[]): void {
   const groups = new Map<string, Problem[]>();
   for (const p of sheetProblems) {
     const key = `${p.round}|${p.certScope}|${p.session}`;
@@ -562,7 +562,7 @@ const CERT_SLUG: Record<CertScope, string> = {
  * 합숙: hapsuk-{academy}-{round}-{cert}-{session-slug}-{q}   (1일차 → 1ilcha)
  * 모의: moui-{academy}-{round}-{cert}-{session}-{q}
  */
-function buildId(args: {
+export function buildId(args: {
   sourceType: SourceType;
   academy: string | null;
   certScope: CertScope;

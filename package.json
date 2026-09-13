@@ -14,6 +14,7 @@
     "split:diag": "tsx scripts/debug-multi.ts",
     "preview": "astro preview",
     "test": "vitest run --config tests/vitest.config.ts tests/unit",
+    "test:data": "vitest run --config tests/vitest.config.ts tests/data",
     "test:e2e": "npm run build && vitest run --config tests/vitest.config.ts tests/e2e",
     "test:live": "vitest run --config tests/vitest.config.ts tests/live",
     "astro": "astro"

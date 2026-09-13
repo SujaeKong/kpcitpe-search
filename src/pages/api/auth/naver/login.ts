@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { getEnv } from '../../../../lib/auth';
+import { getEnv, safeReturnPath } from '../../../../lib/auth';
 
 export const prerender = false;
 
@@ -18,7 +18,7 @@ export const GET: APIRoute = ({ locals, request, redirect }) => {
   }
   const state = randomState();
   const url = new URL(request.url);
-  const returnTo = url.searchParams.get('return') ?? '/';
+  const returnTo = safeReturnPath(url.searchParams.get('return'));
   const callback = `${env.PUBLIC_SITE_URL}/api/auth/naver/callback`;
 
   const authorizeUrl = new URL('https://nid.naver.com/oauth2.0/authorize');

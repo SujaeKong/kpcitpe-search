@@ -7,8 +7,9 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { chromium, type BrowserContext, type Page } from 'playwright';
+import type { BrowserContext, Page } from 'playwright';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { launchPersistent } from '../helpers/browser';
 import { startDistServer, type DistServer } from '../helpers/dist-server';
 
 const DIST = fileURLToPath(new URL('../../dist', import.meta.url));
@@ -19,15 +20,7 @@ let baseProblems: Record<string, unknown>[];
 let profileDir: string;
 let context: BrowserContext | null = null;
 
-// 설치된 Chrome 우선, 없으면 Playwright 번들 Chromium (npx playwright install chromium)
-async function launch(): Promise<BrowserContext> {
-  const options = { headless: true, viewport: { width: 1280, height: 900 } };
-  try {
-    return await chromium.launchPersistentContext(profileDir, { ...options, channel: 'chrome' });
-  } catch {
-    return await chromium.launchPersistentContext(profileDir, options);
-  }
-}
+const launch = () => launchPersistent(profileDir);
 
 /** 검색 결과 헤더의 "전체 N건"을 읽는다 (데이터 로딩이 끝날 때까지 대기) */
 async function readTotal(page: Page): Promise<number> {

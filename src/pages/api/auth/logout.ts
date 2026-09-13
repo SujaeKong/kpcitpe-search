@@ -1,12 +1,11 @@
 import type { APIRoute } from 'astro';
-import { clearSessionCookieHeader } from '../../../lib/auth';
+import { clearSessionCookieHeader, safeReturnPath } from '../../../lib/auth';
 
 export const prerender = false;
 
 export const GET: APIRoute = ({ url }) => {
   const headers = new Headers();
   headers.append('set-cookie', clearSessionCookieHeader());
-  const returnTo = url.searchParams.get('return') ?? '/';
-  headers.set('location', returnTo.startsWith('/') ? returnTo : '/');
+  headers.set('location', safeReturnPath(url.searchParams.get('return')));
   return new Response(null, { status: 302, headers });
 };
