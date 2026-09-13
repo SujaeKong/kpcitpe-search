@@ -5,7 +5,7 @@
  * - 문항↔구간이 한 칸씩 어긋난 분할(옛 형식 off-by-one)은 제목 대조로 차단
  */
 import { describe, expect, it } from 'vitest';
-import { checkTitleAlignment, filterSpecs, generateAllSpecsFromMap, titleTokens } from '../../scripts/split-pdfs';
+import { checkTitleAlignment, filterSpecs, generateAllSpecsFromMap, mergeSplitResults, titleTokens } from '../../scripts/split-pdfs';
 import { makeProblem } from '../helpers/problem-fixture';
 
 const map = {
@@ -86,5 +86,31 @@ describe('제목 정렬 가드', () => {
   it('P9: pdf.js처럼 글자 사이 공백이 있어도 대조된다', () => {
     const spaced = titles.map((t) => t.split('').join(' '));
     expect(checkTitleAlignment(spaced, titles).bestOffset).toBe(0);
+  });
+});
+
+describe('분할 결과 머지', () => {
+  const upload = (questionNumber: number, fileId: string, validated = true) => ({ questionNumber, fileId, fileName: `${fileId}.pdf`, validated });
+  const moui = (round: string, session: string, certScope: '정보관리' | '컴시응' | '공통') => ({ sourceType: '모의' as const, round, session, certScope });
+
+  it('P10: 검증된 분할만 해당 키에 머지 — 모의 종목별은 교시_종목, 실패 task·재분할 금지 항목은 제외', () => {
+    const target = structuredClone(map) as any;
+    const updated = mergeSplitResults(target, [
+      { ok: true, task: moui('2016.01', '3', '컴시응'), uploaded: [upload(7, 'split-7'), upload(8, 'split-8', false)] },
+      { ok: false, task: moui('2012.12', '2', '컴시응'), uploaded: [upload(1, 'failed-1')] },
+      { ok: true, task: moui('2012.12', '2', '정보관리'), uploaded: [upload(1, 'forbidden-1')] },
+      { ok: true, task: { sourceType: '기출', round: '87', session: '1', certScope: '컴시응' }, uploaded: [upload(2, 'kichul-2')] },
+    ]);
+    expect(updated).toBe(2);
+    expect(target.모의.KPC['2016.01']['3_컴시응'].questions).toEqual({ '7': { id: 'split-7', name: 'split-7.pdf' } });
+    expect(target.모의.KPC['2012.12']['2_컴시응']).not.toHaveProperty('questions');
+    expect(target.모의.KPC['2012.12']['2_정보관리']).not.toHaveProperty('questions');
+    expect(target.기출['87']['1_컴시응'].questions).toEqual({ '2': { id: 'kichul-2', name: 'kichul-2.pdf' } });
+  });
+
+  it('P11: 모의 -N 회차 task는 정확한 회차 키가 없으면 base 회차 entry에 머지', () => {
+    const target = structuredClone(map) as any;
+    expect(mergeSplitResults(target, [{ ok: true, task: moui('2010.10-2', '2', '공통'), uploaded: [upload(1, 'n1')] }])).toBe(1);
+    expect(target.모의.KPC['2010.10']['2'].questions).toEqual({ '1': { id: 'n1', name: 'n1.pdf' } });
   });
 });

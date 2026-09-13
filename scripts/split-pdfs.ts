@@ -925,6 +925,62 @@ export function generateAllSpecsFromMap(map: any): TestSpec[] {
   return specs;
 }
 
+type MergeableResult = { ok: boolean; task: Pick<SplitTask, 'sourceType' | 'round' | 'certScope' | 'session' | 'sessionPart'>; uploaded: Pick<UploadedQuestion, 'questionNumber' | 'fileId' | 'fileName' | 'validated'>[] };
+
+/**
+ * 분할 결과의 검증된 문항별 PDF를 매핑 entry의 questions로 머지 (map을 직접 수정). 반환: 갱신한 entry 수.
+ * 재분할 금지 항목(NO_RESPLIT_KEYS)은 결과가 있어도 건드리지 않는다.
+ */
+export function mergeSplitResults(map: any, results: MergeableResult[]): number {
+  const noResplit = new Set(NO_RESPLIT_KEYS);
+  let updated = 0;
+  for (const r of results) {
+    if (!r.ok || r.uploaded.length === 0) continue;
+    const t = r.task;
+    const questionsField: Record<string, { id: string; name: string }> = {};
+    for (const u of r.uploaded) {
+      if (u.validated) questionsField[String(u.questionNumber)] = { id: u.fileId, name: u.fileName };
+    }
+    if (Object.keys(questionsField).length === 0) continue;
+
+    // 매핑 위치 찾기
+    let keyPath: string[] | undefined;
+    if (t.sourceType === '기출') {
+      keyPath = ['기출', t.round, `${t.session}_${t.certScope}`];
+    } else if (t.sourceType === '합숙') {
+      keyPath = ['합숙', t.round, t.sessionPart ? `${t.session}_${t.sessionPart}` : t.session];
+    } else if (t.sourceType === '모의') {
+      // round가 "2010.10-1"이면 mappings는 "2010.10" 형태일 수 있음 — 정확한 회차 우선.
+      // 종목별 해설집 task는 `교시_종목` 키, 통합 해설집은 `교시` 키
+      const key = t.certScope === '공통' ? t.session : `${t.session}_${t.certScope}`;
+      const round = map.모의?.KPC?.[t.round]?.[key] ? t.round : t.round.replace(/-\d+$/, '');
+      keyPath = ['모의', 'KPC', round, key];
+    }
+    const entry = keyPath?.reduce((node: any, k) => node?.[k], map);
+    if (!keyPath || !entry) {
+      console.log(`⚠ 매핑 위치 못 찾음: ${t.sourceType}/${t.round}/${t.session}`);
+    } else if (noResplit.has(keyPath.join('/'))) {
+      console.log(`⛔ 재분할 금지 항목 — 머지 안 함: ${keyPath.join('/')}`);
+    } else {
+      entry.questions = questionsField;
+      updated++;
+      console.log(`📌 매핑 업데이트: ${keyPath.join('/')} (${Object.keys(questionsField).length}개 분할)`);
+    }
+  }
+  return updated;
+}
+
+/** split-result.json을 매핑 파일에 머지해 저장. 워크플로 push 충돌 시 최신 main 위에 재적용하는 데도 사용. */
+export function mergeSplitResultFile(resultPath: string, mappingPath: string): number {
+  const map = JSON.parse(fs.readFileSync(mappingPath, 'utf8'));
+  const updated = mergeSplitResults(map, JSON.parse(fs.readFileSync(resultPath, 'utf8')));
+  if (updated > 0) {
+    map.$generatedAt = new Date().toISOString();
+    fs.writeFileSync(mappingPath, JSON.stringify(map, null, 2) + '\n', 'utf8');
+  }
+  return updated;
+}
+
 /**
  * SPLIT_ONLY로 task 좁히기: '모의' → 모의 전체, '모의:종목별' → 모의 종목별 해설집만. 빈 값이면 전체.
  */
@@ -1018,46 +1074,8 @@ async function main() {
 
   // explanation-files.json에 questions 필드 머지 (성공한 task만)
   if (fs.existsSync(mappingPath)) {
-    const map = JSON.parse(fs.readFileSync(mappingPath, 'utf8')) as any;
-    let updated = 0;
-    for (const r of allResults) {
-      if (!r.ok || r.uploaded.length === 0) continue;
-      const t = r.task;
-      const questionsField: Record<string, { id: string; name: string }> = {};
-      for (const u of r.uploaded) {
-        if (u.validated) {
-          questionsField[String(u.questionNumber)] = { id: u.fileId, name: u.fileName };
-        }
-      }
-      if (Object.keys(questionsField).length === 0) continue;
-
-      // 매핑 위치 찾기
-      let entry: any;
-      if (t.sourceType === '기출') {
-        entry = map.기출?.[t.round]?.[`${t.session}_${t.certScope}`];
-      } else if (t.sourceType === '합숙') {
-        const key = t.sessionPart ? `${t.session}_${t.sessionPart}` : t.session;
-        entry = map.합숙?.[t.round]?.[key];
-      } else if (t.sourceType === '모의') {
-        // round가 "2010.10-1"이면 mappings는 "2010.10" 형태일 수 있음. 둘 다 시도.
-        // 종목별 해설집 task는 `교시_종목` 키, 통합 해설집은 `교시` 키
-        const baseRound = t.round.replace(/-\d+$/, '');
-        const key = t.certScope === '공통' ? t.session : `${t.session}_${t.certScope}`;
-        entry = map.모의?.['KPC']?.[t.round]?.[key] ?? map.모의?.['KPC']?.[baseRound]?.[key];
-      }
-      if (entry) {
-        entry.questions = questionsField;
-        updated++;
-        console.log(`📌 매핑 업데이트: ${t.sourceType}/${t.round}/${t.session} (${Object.keys(questionsField).length}개 분할)`);
-      } else {
-        console.log(`⚠ 매핑 위치 못 찾음: ${t.sourceType}/${t.round}/${t.session}`);
-      }
-    }
-    if (updated > 0) {
-      map.$generatedAt = new Date().toISOString();
-      fs.writeFileSync(mappingPath, JSON.stringify(map, null, 2) + '\n', 'utf8');
-      console.log(`\n✔ explanation-files.json에 ${updated}개 회차 분할 정보 머지`);
-    }
+    const updated = mergeSplitResultFile(path.join(ROOT, 'tmp-split', 'split-result.json'), mappingPath);
+    if (updated > 0) console.log(`\n✔ explanation-files.json에 ${updated}개 회차 분할 정보 머지`);
   }
   console.log(`\n━━━━━ 최종 ━━━━━`);
   for (const r of allResults) {

@@ -414,6 +414,7 @@ build.ts가 `problem.questionNumber`로 분할 PDF 우선 매핑, 없으면 통�
   - `all`: explanation-files.json 전체 entry (기본, ~895 task). idempotent — 이미 `questions` 있으면 자동 스킵
 - **옵션**: `overwrite` (기존 분할 파일 휴지통 이동 후 재업로드), `batch_offset/batch_limit` (chunked 실행), `concurrency` (병렬, 기본 5), `only` (task 좁히기: `모의`, `모의:종목별`)
 - **자동 제외**: `NO_RESPLIT_KEYS`(재분할 금지 12건)는 `mode=all`에서도 task를 만들지 않음
+- **매핑 push 충돌**: 실행 중 다른 워크플로가 매핑을 커밋하면 rebase 대신 최신 main으로 reset 후 `npm run split:merge`로 분할 결과를 재머지해 push (3회). 그래도 실패하면 산출물 `split-result`로 수동 복구(§12)
 - **소요**: 전체 ~1.5~3시간 (concurrency=7 기준), idempotent라 두 번째부터는 신규 entry만
 
 ### 9.4 split-debug.yml / split-diag.yml
@@ -544,7 +545,8 @@ build.ts가 `problem.questionNumber`로 분할 PDF 우선 매핑, 없으면 통�
 - **결함**: 옛 모의(2010~2019)는 교시마다 정보관리·컴시응 해설집이 따로인데 sync가 `KPC/회차/교시` 한 키에 먼저 찾은 파일만 저장 → 50개 회차 1,508문항이 다른 종목 해설에 연결. 겹친 원인: 모의 자동 문항번호가 교시 통합 번호로 바뀐 뒤(컴시응 1~6 → 7~12) 옛 종목별 분할 번호가 다른 종목 문항 번호와 맞물림.
 - **수정**: sync 모의 키에 종목 포함(`교시_종목`), questions는 fileId 기준 보존. build는 같은 종목 → 통합 순으로만 조회. split-pdfs는 종목 키 인식 + `NO_RESPLIT_KEYS` 자동 제외 + 제목 정렬 가드 + `only` 입력.
 - **매핑 이전**: 종목별 해설집 208건 키 이동, 기존 분할 50건은 해당 종목 문항 수와 모두 일치해 현재 번호로 재배치(분할 파일명 주제어로 대조 검증). 결과: 잘못된 연결 1,508건 해제, 같은 종목 재배치 246건, 공통 문항 통합본 31건. 기출·합숙 변화 없음.
-- **후속**: sync로 짝 종목 해설집 매핑 → `split-pdfs mode=all only=모의:종목별`로 분할.
+- **후속 (같은 날 완료)**: sync가 짝 종목 해설집 210개 추가 매핑(모의 408 → 618 entry). `split-pdfs mode=all only=모의:종목별` 365 task 중 49개 해설집(364 PDF, 전부 자체검증 OK) 분할, 나머지는 검출 수 불일치 184·번호 시퀀스 비정상 103·검출 실패 3·문항 없음 26으로 통합본 유지. 제목 정렬 가드에 걸린 건 0. 워크플로 매핑 push가 rebase 충돌로 실패해 산출물로 `split:merge` 복구 → 워크플로를 재머지 방식으로 수정.
+- **결과(모의)**: 분할본 2,128 / 통합본 2,925 / 없음 908 문항, 종목 불일치 0. (없음 +58은 자기 종목 해설집이 Drive에 없는데 다른 종목 해설에 연결돼 있던 문항)
 
 **알려진 한계**:
 - 일부 옛 합숙(2010년대) PDF는 풀이지 형식 불규칙 → fallback (통합 PDF로 정상 표시)
@@ -613,6 +615,12 @@ gh workflow run split-pdfs.yml --ref main \
 # 잘못 분할된 회차 재처리 (휴지통 이동 후 재업로드)
 gh workflow run split-pdfs.yml --ref main \
   -f mode=test -f overwrite=true
+
+# 모의 옛 회차 종목별 해설집만 분할 (재분할 금지 항목 자동 제외)
+gh workflow run split-pdfs.yml --ref main -f mode=all -f only='모의:종목별' -f concurrency=7
+
+# 분할 워크플로의 매핑 push가 실패했을 때: 산출물로 최신 매핑에 복구
+gh run download <RUN_ID> -n split-result -D /tmp/split && npm run split:merge -- /tmp/split/split-result.json
 
 # 디버그: 새 PDF 형식 분석
 gh workflow run split-diag.yml --ref main
@@ -684,6 +692,7 @@ curl -X PATCH "https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/pages/
 - **wrangler 3.114.1**: pages 프로젝트는 wrangler.toml에 `[build]` 섹션 거부. 우리 `build` 섹션 제거됨.
 - **Cloudflare API token 권한**: 기본 Workers 템플릿엔 D1 권한 없음. D1 생성/마이그레이션은 대시보드 또는 권한 추가 토큰 필요.
 - **GitHub Pages**: 2026-05-05 비활성화. 외부 링크에 옛 URL 있으면 404.
+- **sync-drive 매핑 push 충돌 가능성**: `sync-drive.yml` 커밋 단계는 아직 `pull --rebase` 방식이라, sync 실행 중 split 워크플로가 매핑을 커밋하면 `$generatedAt` 줄 충돌로 실패할 수 있음(다음 날 sync가 다시 반영). split 쪽은 재머지 방식으로 수정됨.
 - **엑셀 '조직' 종목 정규화**: 2010~2012년 일부 모의는 엑셀 종목 '조직'(=조직응용, 지금의 컴시응)이 어댑터에서 `공통`으로 정규화됨. 해설지는 build가 종목별 해설집 통합본으로 연결해 보완하지만, 검색 필터·ID(`common`)는 공통으로 남음.
 
 ---

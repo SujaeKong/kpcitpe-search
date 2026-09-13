@@ -92,13 +92,22 @@ jobs:
           else
             git config user.name "kpc-bot"
             git config user.email "kpc-bot@users.noreply.github.com"
-            git add data/mappings/explanation-files.json
-            git commit -m "chore: split PDFs questions 매핑 갱신"
+            # 실행 중 다른 워크플로(sync/split)가 매핑을 커밋했을 수 있음 → rebase 대신
+            # 최신 main 위에 분할 결과(tmp-split/split-result.json, gitignore)를 다시 머지해 충돌 없이 push
+            pushed=false
             for i in 1 2 3; do
-              if git push; then break; fi
-              echo "push 실패, pull --rebase 후 재시도 ($i/3)"
-              git pull --rebase origin main
+              git fetch -q origin main
+              git reset -q --hard origin/main
+              npm run -s split:merge
+              if git diff --quiet -- data/mappings/explanation-files.json; then
+                echo "최신 main에 이미 반영됨"; pushed=true; break
+              fi
+              git add data/mappings/explanation-files.json
+              git commit -q -m "chore: split PDFs questions 매핑 갱신"
+              if git push -q; then pushed=true; break; fi
+              echo "push 실패, 최신 main에 재머지 후 재시도 ($i/3)"
             done
+            [ "$pushed" = true ] || { echo "::error::매핑 push 3회 실패 — 산출물 split-result로 npm run split:merge 수동 복구"; exit 1; }
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
