@@ -77,7 +77,7 @@ kpcitpe-search/
 │   ├── lib/
 │   │   ├── search.ts           Fuse 래퍼 + 필터/정렬
 │   │   ├── search-history.ts   localStorage 검색 히스토리
-│   │   ├── data-loader.ts      problems.json fetch + sessionStorage 캐시
+│   │   ├── data-loader.ts      problems.json fetch (로드마다 ETag 재검증)
 │   │   ├── jwt.ts              Web Crypto JWT
 │   │   ├── auth.ts             세션 쿠키 헬퍼
 │   │   ├── db.ts               D1 사용자 DB 헬퍼 (자동 schema)
@@ -159,7 +159,7 @@ deploy-cloudflare.yml                sync-drive.yml (매일 03:00 + 수동)
 
 **① 검색 — 100% 클라이언트 (서버 안 거침)**
 ```
-브라우저 → Cloudflare CDN → index.html + problems.json(~9.7MB, sessionStorage 캐시)
+브라우저 → Cloudflare CDN → index.html + problems.json(~9.9MB, HTTP 캐시 + 로드마다 ETag 재검증 → 미변경 시 304)
    → React 하이드레이션 → Fuse.js 인덱스(브라우저 메모리) → 로컬 검색. 서버 왕복 0, 비로그인 OK
 ```
 
@@ -235,8 +235,8 @@ curl -X PATCH "https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/pages/
 
 | 증상 | 원인 | 해결 |
 |---|---|---|
-| 검색 결과 없음 | 클라이언트 sessionStorage 캐시 | `Cmd+Shift+R` |
-| "해설지 준비 중"인데 매핑 됐을 거 같음 | 캐시 또는 매핑 mismatch | data-loader.ts CACHE_KEY/VERSION bump |
+| 신규 회차 카드가 예전 방문자에게만 안 보임 | (2026-09-12 수정) 과거 `data-loader`의 `force-cache` + 버전 고정 sessionStorage가 옛 problems.json을 재사용 | 현재는 로드마다 재검증 → 새로고침으로 반영. 그래도 안 보이면 라이브 `/data/problems.json`에 해당 회차가 있는지 먼저 확인(배포 문제) |
+| "해설지 준비 중"인데 매핑 됐을 거 같음 | 매핑 mismatch 또는 미배포 | 라이브 `/data/problems.json`에서 해당 문항 `explanationFileId` 확인 → 비어 있으면 sync/split 매핑 로그 확인 |
 | 매핑 누락 (특정 회차) | 새 파일명 변형 미매칭 | sync log 확인 → parseKichul/Moui/Hapsuk 패턴 추가 |
 | sync workflow 실패 (push rejected) | 자동 commit + 수동 push 충돌 | 자동 `pull --rebase` retry 설정됨 |
 | iframe PDF 로드 실패 | Drive 공유 권한 미설정 | 폴더 → 일반 액세스 → "링크 있는 모든 사용자" |
