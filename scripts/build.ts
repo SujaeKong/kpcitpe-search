@@ -154,13 +154,13 @@ function loadExplanationMap(): ExplanationMap {
  *   기출:  {round}.{session}
  *   기출:  {round}.{session}_{certScope}
  *   합숙:  {round}.{session}_{sessionPart}
- *   모의:  {academy}.{round}.{session}
- *   자체:  {academy}.{round}.{session}
+ *   모의·자체: {academy}.{round}.{session}_{certScope} (옛 회차 종목별 해설집) → {academy}.{round}.{session} (통합)
  */
 export function applyExplanationMap(problems: Problem[], map: ExplanationMap): number {
   let matched = 0;
   for (const p of problems) {
     let entry: ExplanationEntry | undefined;
+    let wholeFileOnly = false;
     if (p.sourceType === '기출') {
       // sync에서 키를 `${session}_${certScope}` 형태로 저장 (정보관리/컴시응 분리)
       const certKey = `${p.session}_${p.certScope}`;
@@ -168,21 +168,28 @@ export function applyExplanationMap(problems: Problem[], map: ExplanationMap): n
     } else if (p.sourceType === '합숙') {
       const key = p.sessionPart ? `${p.session}_${p.sessionPart}` : p.session;
       entry = map.합숙?.[p.round]?.[key];
-    } else if (p.sourceType === '모의' && p.academy) {
+    } else if ((p.sourceType === '모의' || p.sourceType === '자체') && p.academy) {
       // round가 "2010.10-1" 형태면 base round("2010.10")로 fallback (mappings는 base round 단위)
+      const rounds = map[p.sourceType]?.[p.academy];
       const baseRound = p.round.replace(/-\d+$/, '');
-      entry =
-        map.모의?.[p.academy]?.[p.round]?.[p.session] ??
-        map.모의?.[p.academy]?.[baseRound]?.[p.session];
-    } else if (p.sourceType === '자체' && p.academy) {
-      const baseRound = p.round.replace(/-\d+$/, '');
-      entry =
-        map.자체?.[p.academy]?.[p.round]?.[p.session] ??
-        map.자체?.[p.academy]?.[baseRound]?.[p.session];
+      const find = (key: string) => rounds?.[p.round]?.[key] ?? rounds?.[baseRound]?.[key];
+      if (p.certScope !== '공통') {
+        // 옛 회차 종목별 해설집(`교시_종목`) 우선, 없으면 종목 통합 해설집(`교시`). 다른 종목 해설집은 쓰지 않음.
+        entry = find(`${p.session}_${p.certScope}`) ?? find(p.session);
+      } else {
+        entry = find(p.session);
+        if (!entry) {
+          // 공통 문항인데 종목별 해설집만 있는 옛 회차(엑셀 '조직'=조직응용이 공통으로 정규화된 경우 포함)
+          // → 통합본만 연결. 분할본 번호는 그 종목 문항 번호라 공통 문항 번호와 맞지 않음.
+          entry = find(`${p.session}_컴시응`) ?? find(`${p.session}_정보관리`);
+          wholeFileOnly = true;
+        }
+      }
     }
     if (entry) {
       // 분할 PDF가 있으면 그 fileId 우선 사용, 없으면 통합 PDF로 fallback
-      const perQ = p.questionNumber != null ? entry.questions?.[String(p.questionNumber)] : undefined;
+      const perQ =
+        !wholeFileOnly && p.questionNumber != null ? entry.questions?.[String(p.questionNumber)] : undefined;
       if (perQ) {
         p.explanationFileId = perQ.id;
         p.explanationFileName = perQ.name ?? null;

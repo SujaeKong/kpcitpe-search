@@ -73,9 +73,52 @@ describe('해설지 매핑', () => {
     ]);
   });
 
-  it('B6: 매핑 없는 문항은 비워 두고, 매칭 건수를 반환', () => {
+  it('B6a: 매핑 없는 문항은 비워 두고, 매칭 건수를 반환', () => {
     const { matched, ids } = apply(makeProblem({ round: '139' }), makeProblem({ sourceType: '모의', academy: null, round: '2010.10' }), makeProblem());
     expect(ids).toEqual([null, null, 'kichul-140-mgmt-full']);
     expect(matched).toBe(1);
+  });
+});
+
+describe('모의 종목별 해설집 (2026-09 종목 키 분리)', () => {
+  const map: ExplanationMap = {
+    모의: {
+      KPC: {
+        '2016.01': {
+          '3_컴시응': { id: 'app-whole', name: '제67회 컴퓨터시스템응용_해설집_201601_3교시.pdf', questions: { '7': { id: 'app-q7' } } },
+          '3_정보관리': { id: 'mgmt-whole', name: '제67회 정보관리_해설집_201601_3교시.pdf', questions: { '1': { id: 'mgmt-q1' } } },
+        },
+        '2016.04': {
+          '1': { id: 'combined-whole', questions: { '1': { id: 'combined-q1' } } },
+          '2_컴시응': { id: 'app-only-whole', questions: { '1': { id: 'app-only-q1' } } },
+        },
+      },
+    },
+  };
+  const moui = (round: string, session: string, certScope: '정보관리' | '컴시응' | '공통', questionNumber: number) =>
+    makeProblem({ sourceType: '모의', academy: 'KPC', round, session, certScope, questionNumber });
+  const idsFor = (...problems: ReturnType<typeof makeProblem>[]) => {
+    applyExplanationMap(problems, map);
+    return problems.map((p) => p.explanationFileId ?? null);
+  };
+
+  it('B7: 정보관리·컴시응 문항은 각자 종목 해설집과 그 분할본 — 번호가 같아도 다른 종목 분할본을 쓰지 않음', () => {
+    expect(idsFor(moui('2016.01', '3', '정보관리', 1), moui('2016.01', '3', '컴시응', 7), moui('2016.01', '3', '컴시응', 1))).toEqual([
+      'mgmt-q1',
+      'app-q7',
+      'app-whole',
+    ]);
+  });
+
+  it('B8: 종목별 해설집이 없으면 통합 해설집으로, 다른 종목 해설집으로는 가지 않음', () => {
+    expect(idsFor(moui('2016.04', '1', '정보관리', 1), moui('2016.04', '2', '정보관리', 1), moui('2016.04', '2', '컴시응', 1))).toEqual([
+      'combined-q1',
+      null,
+      'app-only-q1',
+    ]);
+  });
+
+  it('B9: 공통 문항은 통합 해설집 우선, 없으면 종목별 해설집의 통합본만 (분할본 번호는 쓰지 않음)', () => {
+    expect(idsFor(moui('2016.04', '1', '공통', 1), moui('2016.01', '3', '공통', 7))).toEqual(['combined-q1', 'app-whole']);
   });
 });

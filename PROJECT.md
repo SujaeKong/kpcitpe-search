@@ -299,7 +299,8 @@ wrangler d1 execute kpcitpe-users --command "SELECT * FROM users LIMIT 5" --remo
 ```
 기출:  {round}.{session}_{certScope}     예: '138' → '1_정보관리'
 합숙:  {round}.{session}_{sessionPart}    예: '2026.02' → '1일차_1교시'
-모의:  {academy}.{round}.{session}        예: 'KPC' → '2026.04' → '1'
+모의:  {academy}.{round}.{session}        예: 'KPC' → '2026.04' → '1'          (종목 통합 해설집)
+       {academy}.{round}.{session}_{종목} 예: 'KPC' → '2016.01' → '3_컴시응'   (옛 회차 종목별 해설집, 2026-09~)
 ```
 
 각 entry 구조:
@@ -321,6 +322,8 @@ build.ts의 `applyExplanationMap`이 problem 별로:
 2. 없으면 entry.id (통합 PDF) 사용
 
 모의 round는 -N suffix(`2010.10-1`) variant도 base round(`2010.10`)로 자동 fallback.
+
+모의 조회 순서(build `applyExplanationMap`): 정보관리·컴시응 문항은 `교시_종목` → `교시`(통합). **다른 종목 해설집으로는 절대 폴백하지 않음.** 공통 문항은 `교시` → 없으면 종목별 해설집의 통합본만(분할 번호는 그 종목 문항 번호라 사용 안 함). 키 규칙은 `scripts/lib/explanation-keys.ts`(sync·split 공용).
 
 ### 7.3 D1 users 테이블
 
@@ -409,7 +412,8 @@ build.ts가 `problem.questionNumber`로 분할 PDF 우선 매핑, 없으면 통�
 - **모드**:
   - `test`: TEST_SPECS 19개 회차만 (디버그용)
   - `all`: explanation-files.json 전체 entry (기본, ~895 task). idempotent — 이미 `questions` 있으면 자동 스킵
-- **옵션**: `overwrite` (기존 분할 파일 휴지통 이동 후 재업로드), `batch_offset/batch_limit` (chunked 실행), `concurrency` (병렬, 기본 5)
+- **옵션**: `overwrite` (기존 분할 파일 휴지통 이동 후 재업로드), `batch_offset/batch_limit` (chunked 실행), `concurrency` (병렬, 기본 5), `only` (task 좁히기: `모의`, `모의:종목별`)
+- **자동 제외**: `NO_RESPLIT_KEYS`(재분할 금지 12건)는 `mode=all`에서도 task를 만들지 않음
 - **소요**: 전체 ~1.5~3시간 (concurrency=7 기준), idempotent라 두 번째부터는 신규 entry만
 
 ### 9.4 split-debug.yml / split-diag.yml
@@ -488,10 +492,11 @@ build.ts가 `problem.questionNumber`로 분할 PDF 우선 매핑, 없으면 통�
 
 시그널 우선순위로 시도, 첫 번째로 ≥3 문항 검출되는 것 채택. 두 자리 숫자 자릿수 사이 공백 변형 지원(`1 0 .` → 10).
 
-**3중 안전 가드** (모두 통과해야 분할 적용):
+**안전 가드** (모두 통과해야 분할 적용):
 1. 검출 ≥ 3 (signal=none이면 fallback)
 2. 검출 갯수 == problems 갯수 (다르면 매핑 안전 X → fallback)
 3. 검출 번호 시퀀스가 1, 2, ..., N 연속 (페이지번호 mis-match 차단)
+4. (2026-09~) 제목 정렬: 각 구간 첫 페이지에 짝지은 문항 제목 토큰이 있는지 offset -2..2로 대조, 0이 아닌 offset이 더 잘 맞으면 포기 (옛 형식 off-by-one 차단, `checkTitleAlignment`)
 
 → 가드 실패 시 `questions` 필드 미생성, 사이트는 통합 PDF 그대로 사용.
 
@@ -519,7 +524,7 @@ build.ts가 `problem.questionNumber`로 분할 PDF 우선 매핑, 없으면 통�
 
 **검증 결과 (19개 샘플 task, 6개 시그널)**: 16/19 분할 성공 (총 211문항), 3/19 fallback (모두 옛 형식 PDF: 합숙 114/107회, 모의 77회).
 
-**⚠️ 옛 회차 분할 정렬 오류 → 통합본 폴백 (2026-06)**: 옛 2008~2010년대 형식에서 문항↔내용이 한 칸씩 어긋나는 분할이 발견됨 (예: 87회 1교시 Q2 클릭 시 1번 해설 노출 — 엑셀 문제번호와 PDF 물리 순서 불일치 + 마커 검출 off-by-one). best-offset 검증(본문 vs ±2 문제제목 매칭)으로 일관되게 어긋난 **12개 회차의 `questions`를 제거해 통합본(전체 PDF)으로 폴백**: 기출 87/1정·93/3정·93/4정·105/4컴, 모의 2010.10/1·2012.04/3·4·2012.12/2·2013.05/3·2014.04/2·2022.11/3·2023.11/4. **이 회차들은 옛 형식 검출 off-by-one을 고치기 전까지 재분할(split-pdfs) 금지** — 재분할하면 다시 어긋남. (정렬 검증 방법: SA로 분할본 1페이지 텍스트 추출 → 문제제목 토큰 매칭 best-offset.)
+**⚠️ 옛 회차 분할 정렬 오류 → 통합본 폴백 (2026-06)**: 옛 2008~2010년대 형식에서 문항↔내용이 한 칸씩 어긋나는 분할이 발견됨 (예: 87회 1교시 Q2 클릭 시 1번 해설 노출 — 엑셀 문제번호와 PDF 물리 순서 불일치 + 마커 검출 off-by-one). best-offset 검증(본문 vs ±2 문제제목 매칭)으로 일관되게 어긋난 **12개 회차의 `questions`를 제거해 통합본(전체 PDF)으로 폴백**: 기출 87/1정·93/3정·93/4정·105/4컴, 모의 2010.10/1·2012.04/3·4·2012.12/2·2013.05/3·2014.04/2·2022.11/3·2023.11/4. **이 회차들은 옛 형식 검출 off-by-one을 고치기 전까지 재분할(split-pdfs) 금지** — 재분할하면 다시 어긋남. (2026-09: `scripts/lib/explanation-keys.ts`의 `NO_RESPLIT_KEYS`로 split-pdfs 자동 task에서 제외. 모의 2012.12/2·2013.05/3·2014.04/2는 종목 키 분리 후 `…/2_정보관리` 경로.) (정렬 검증 방법: SA로 분할본 1페이지 텍스트 추출 → 문제제목 토큰 매칭 best-offset.)
 
 ### 캐시 품질 수정 + 테스트 도입 (2026-09-12~13)
 - **증상**: 예전 방문자는 새로고침해도 신규 회차(140회 기출·합숙 2026.08) 카드가 안 보임. 서버 데이터는 정상.
@@ -533,7 +538,13 @@ build.ts가 `problem.questionNumber`로 분할 PDF 우선 매핑, 없으면 통�
 - **테스트**: unit 77 / data 13 / e2e 13 / live 11. 검색·정규화·빌드 매핑·인증 흐름·데이터 무결성·화면 흐름 추가. 테스트에서 import하도록 어댑터 정규화 함수와 `build.ts`의 `pickLatestVersions`/`applyExplanationMap`을 export (`build.ts`는 직접 실행 시에만 `main()`).
 - **수정 — open redirect**: 로그아웃/로그인 콜백의 return 검사가 `startsWith('/')`뿐이라 `//evil.com`, `/\evil.com`, `/\t/evil.com`, `/..//evil.com`으로 외부 이동 가능 → `safeReturnPath()`(URL 해석 후 같은 origin만, 한글 인코딩)로 통일.
 - **수정 — 깨진 세션 쿠키 500**: 서명이 base64가 아닌 쿠키면 `verifyJwt`의 `atob` 예외로 `/api/me`·해설지 API가 500 → 형식 오류는 null(비로그인) 처리.
-- **발견 — 모의 해설지 종목 뒤섞임**: §16 참고. data 테스트 D12(건수 증가 감시)·D13(`it.fails`)으로 추적.
+- **발견 — 모의 해설지 종목 뒤섞임**: 아래 "모의 해설지 종목 키 분리"에서 수정.
+
+### 모의 해설지 종목 키 분리 (2026-09-13)
+- **결함**: 옛 모의(2010~2019)는 교시마다 정보관리·컴시응 해설집이 따로인데 sync가 `KPC/회차/교시` 한 키에 먼저 찾은 파일만 저장 → 50개 회차 1,508문항이 다른 종목 해설에 연결. 겹친 원인: 모의 자동 문항번호가 교시 통합 번호로 바뀐 뒤(컴시응 1~6 → 7~12) 옛 종목별 분할 번호가 다른 종목 문항 번호와 맞물림.
+- **수정**: sync 모의 키에 종목 포함(`교시_종목`), questions는 fileId 기준 보존. build는 같은 종목 → 통합 순으로만 조회. split-pdfs는 종목 키 인식 + `NO_RESPLIT_KEYS` 자동 제외 + 제목 정렬 가드 + `only` 입력.
+- **매핑 이전**: 종목별 해설집 208건 키 이동, 기존 분할 50건은 해당 종목 문항 수와 모두 일치해 현재 번호로 재배치(분할 파일명 주제어로 대조 검증). 결과: 잘못된 연결 1,508건 해제, 같은 종목 재배치 246건, 공통 문항 통합본 31건. 기출·합숙 변화 없음.
+- **후속**: sync로 짝 종목 해설집 매핑 → `split-pdfs mode=all only=모의:종목별`로 분할.
 
 **알려진 한계**:
 - 일부 옛 합숙(2010년대) PDF는 풀이지 형식 불규칙 → fallback (통합 PDF로 정상 표시)
@@ -673,7 +684,7 @@ curl -X PATCH "https://api.cloudflare.com/client/v4/accounts/{ACCOUNT_ID}/pages/
 - **wrangler 3.114.1**: pages 프로젝트는 wrangler.toml에 `[build]` 섹션 거부. 우리 `build` 섹션 제거됨.
 - **Cloudflare API token 권한**: 기본 Workers 템플릿엔 D1 권한 없음. D1 생성/마이그레이션은 대시보드 또는 권한 추가 토큰 필요.
 - **GitHub Pages**: 2026-05-05 비활성화. 외부 링크에 옛 URL 있으면 404.
-- **모의 옛 회차 해설지 종목 뒤섞임 (2026-09-13 발견, 미수정)**: 2010~2017년대 모의고사는 정보관리/컴시응 해설집이 교시별로 따로 있는데, `sync-drive-mappings.ts`가 모의를 `KPC/회차/교시` 한 키로 저장하고 먼저 찾은 파일만 남김. build는 문항번호로만 분할본을 고르므로 다른 종목 문항에 엉뚱한 해설이 연결됨. 50개 회차 1,495문항(분할본 273 + 통합본 1,222). 예: 모의 2016.07 3교시 정보관리 1번(AVL Tree) → 컴시응 1번(CPU 스케줄링) 분할본. 근본 수정은 sync 모의 키에 종목 포함 → build 조회 → split-pdfs 재분할 순서가 필요. data 테스트 D12/D13으로 추적.
+- **엑셀 '조직' 종목 정규화**: 2010~2012년 일부 모의는 엑셀 종목 '조직'(=조직응용, 지금의 컴시응)이 어댑터에서 `공통`으로 정규화됨. 해설지는 build가 종목별 해설집 통합본으로 연결해 보완하지만, 검색 필터·ID(`common`)는 공통으로 남음.
 
 ---
 

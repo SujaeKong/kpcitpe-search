@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { kichulRoundOrder } from '../../scripts/adapters/kpc-xls-adapter';
 import { applyExplanationMap, type ExplanationEntry, type ExplanationMap } from '../../scripts/build';
+import { mouiFileCert, NO_RESPLIT_KEYS } from '../../scripts/lib/explanation-keys';
 import { isValidDriveFileId } from '../../src/lib/google-drive';
 import type { Problem } from '../../src/lib/types';
 
@@ -20,16 +21,6 @@ const stats = JSON.parse(readFileSync(file('data/stats.json'), 'utf8'));
 const mapping = JSON.parse(readFileSync(file('data/mappings/explanation-files.json'), 'utf8'));
 
 const CERT_SLUG = { 정보관리: 'mgmt', 컴시응: 'app', 공통: 'common' } as const;
-
-// PROJECT.md §10 "옛 회차 분할 정렬 오류": 분할본이 한 칸씩 어긋나 통합본으로 폴백한 회차 — 재분할 금지
-const NO_SPLIT_ENTRIES: [string, ...string[]][] = [
-  ['기출', '87', '1_정보관리'], ['기출', '93', '3_정보관리'], ['기출', '93', '4_정보관리'], ['기출', '105', '4_컴시응'],
-  ['모의', 'KPC', '2010.10', '1'], ['모의', 'KPC', '2012.04', '3'], ['모의', 'KPC', '2012.04', '4'], ['모의', 'KPC', '2012.12', '2'],
-  ['모의', 'KPC', '2013.05', '3'], ['모의', 'KPC', '2014.04', '2'], ['모의', 'KPC', '2022.11', '3'], ['모의', 'KPC', '2023.11', '4'],
-];
-
-// 모의 옛 회차 종목 불일치(아래 D13) 발견 시점(2026-09-13)의 건수. 늘어나면 실패, 고치면 줄여 갈 것.
-const KNOWN_MOUI_CERT_MISMATCH = 1495;
 
 /** 규칙을 어긴 문항 수와 앞 5건 */
 function violations(reason: (p: Problem) => string | null | false) {
@@ -159,12 +150,13 @@ describe('해설지 매핑 무결성', () => {
     expect(violations((p) => !!p.explanationFileId && !ids.has(p.explanationFileId) && `없는 id ${p.explanationFileId}`)).toEqual(NONE);
   });
 
-  it('D9: [재분할 금지] 옛 형식 12개 회차에는 분할(questions)이 없다', () => {
-    const resplit = NO_SPLIT_ENTRIES.filter(([st, ...path]) => {
-      const entry = path.reduce((node: any, key) => node?.[key], mapping[st]);
-      return entry?.questions !== undefined;
+  it('D9: [재분할 금지] 옛 형식 12개 항목은 매핑에 존재하고 분할(questions)이 없다', () => {
+    const problemsFound = NO_RESPLIT_KEYS.flatMap((keyPath) => {
+      const entry = keyPath.split('/').reduce((node: any, key) => node?.[key], mapping);
+      if (!entry) return [`${keyPath}: 항목 없음 (키 규칙이 바뀌었으면 NO_RESPLIT_KEYS 갱신)`];
+      return entry.questions !== undefined ? [`${keyPath}: 분할됨`] : [];
     });
-    expect(resplit.map((e) => e.join('/'))).toEqual([]);
+    expect(problemsFound).toEqual([]);
   });
 
   it('D10: 빌드 결과의 해설지 연결이 현재 매핑 파일과 같다 (매핑 갱신 후 재빌드 누락 감지)', () => {
@@ -174,19 +166,22 @@ describe('해설지 매핑 무결성', () => {
     expect({ count: diffs.length, sample: diffs.slice(0, 5) }).toEqual(NONE);
   });
 
-  it('D11: 기출·합숙은 해설지 파일명의 종목이 문항 종목과 같다', () => {
-    const mismatched = [...certMismatches('기출'), ...certMismatches('합숙')];
-    expect(mismatched.slice(0, 5).map((p) => `${p.id} → ${p.explanationFileName}`)).toEqual([]);
+  // 2026-09 수정 전: 옛 모의 정보관리/컴시응 해설집이 한 키로 합쳐져 1,495문항이 다른 종목 해설에 연결됐음
+  it('D11: 해설지 파일명의 종목이 문항 종목과 같다 (기출·합숙·모의)', () => {
+    const mismatched = ['기출', '합숙', '모의'].flatMap(certMismatches);
+    expect({ count: mismatched.length, sample: mismatched.slice(0, 5).map((p) => `${p.id} → ${p.explanationFileName}`) }).toEqual(NONE);
   });
 
-  it(`D12: 모의 종목 불일치가 알려진 ${KNOWN_MOUI_CERT_MISMATCH}건보다 늘지 않는다`, () => {
-    expect(certMismatches('모의').length).toBeLessThanOrEqual(KNOWN_MOUI_CERT_MISMATCH);
-  });
-
-  // 알려진 결함: 옛 모의(2010~2017) 정보관리/컴시응 별도 해설집이 sync에서 `학원/회차/교시` 한 키로
-  // 합쳐져 한 종목 파일만 남음 → 다른 종목 문항에 엉뚱한 해설이 연결됨. 고치면 이 테스트가 "예상 밖 통과"로
-  // 실패하니 it.fails → it 으로 바꾸고 D12 기준값을 0으로.
-  it.fails('D13: [알려진 결함] 모의도 해설지 파일명의 종목이 문항 종목과 같아야 한다', () => {
-    expect(certMismatches('모의').length).toBe(0);
+  it('D12: 모의 매핑 키는 "교시" 또는 "교시_종목"이고, 종목 키는 파일명 종목과 일치', () => {
+    const bad = entries
+      .filter(({ sourceType }) => sourceType === '모의')
+      .flatMap(({ path, entry }) => {
+        const key = path[path.length - 1];
+        const m = key.match(/^\d+(?:_(정보관리|컴시응))?$/);
+        if (!m) return [`${path.join('/')}: 키 형식`];
+        const fileCertName = mouiFileCert(entry.name ?? '');
+        return (m[1] ?? null) !== fileCertName ? [`${path.join('/')}: 파일 종목 ${fileCertName}`] : [];
+      });
+    expect(bad.slice(0, 5)).toEqual([]);
   });
 });

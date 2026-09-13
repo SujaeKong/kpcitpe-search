@@ -24,6 +24,10 @@ on:
         description: '병렬 처리 개수'
         type: string
         default: '5'
+      only:
+        description: "task 좁히기 (예: '모의' 전체, '모의:종목별' 옛 회차 종목별 해설집만). 빈 값=전체"
+        type: string
+        default: ''
 
 permissions:
   contents: write
@@ -65,6 +69,7 @@ jobs:
           BATCH_OFFSET: ${{ inputs.batch_offset || '0' }}
           BATCH_LIMIT: ${{ inputs.batch_limit || '0' }}
           CONCURRENCY: ${{ inputs.concurrency || '5' }}
+          SPLIT_ONLY: ${{ inputs.only }}
         run: npm run split:pdfs
         timeout-minutes: 350
 

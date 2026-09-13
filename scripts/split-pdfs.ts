@@ -24,6 +24,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { PDFDocument } from 'pdf-lib';
 // @ts-ignore
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
+import { NO_RESPLIT_KEYS } from './lib/explanation-keys';
 
 const __filename = url.fileURLToPath(import.meta.url);
 const ROOT = path.resolve(path.dirname(__filename), '..');
@@ -381,6 +382,41 @@ function detectQuestionRangesWithSignal(pageTexts: string[]): {
   return { ranges: [], signal: 'none' };
 }
 
+// ===== 제목 정렬 검증 =====
+
+const TITLE_STOPWORDS = new Set([
+  '설명하시오', '대하여', '대해', '대해서', '다음', '비교하시오', '제시하시오', '기술하시오', '서술하시오',
+  '설명', '관하여', '관련', '위한', '하시오', '답하시오', '물음에', '제시된', '있는', '그리고',
+]);
+
+/** 문항 제목의 핵심 토큰 (2자 이상 한글·영숫자, 흔한 서술어 제외, 소문자) */
+export function titleTokens(title: string): string[] {
+  const tokens = (title.match(/[A-Za-z0-9]{2,}|[가-힣]{2,}/g) ?? []).map((t) => t.toLowerCase());
+  return [...new Set(tokens.filter((t) => !TITLE_STOPWORDS.has(t)))];
+}
+
+/**
+ * 분할 구간 첫 페이지 텍스트(rangeTexts[i])가 짝지은 문항 제목(titles[i])과 맞는지 검사.
+ * titles[i + offset]과 가장 잘 맞는 offset(-2..2)을 돌려준다 — 0이 아니면 한 칸씩 어긋난 분할
+ * (옛 형식 off-by-one, PROJECT.md §10). 텍스트가 없거나 근거가 없으면 동점 → 0.
+ */
+export function checkTitleAlignment(rangeTexts: string[], titles: string[]): { bestOffset: number; scores: Record<number, number> } {
+  const texts = rangeTexts.map((t) => t.replace(/\s+/g, '').toLowerCase());
+  const tokenSets = titles.map(titleTokens);
+  const scores: Record<number, number> = {};
+  for (const offset of [0, -1, 1, -2, 2]) {
+    let score = 0;
+    texts.forEach((text, i) => {
+      const tokens = tokenSets[i + offset];
+      if (!tokens?.length) return;
+      if (tokens.filter((t) => text.includes(t)).length / tokens.length >= 0.5) score++;
+    });
+    scores[offset] = score;
+  }
+  const bestOffset = [0, -1, 1, -2, 2].reduce((best, o) => (scores[o] > scores[best] ? o : best), 0);
+  return { bestOffset, scores };
+}
+
 // ===== 페이지 추출 =====
 
 async function extractPagesPdf(buf: Buffer, startPage: number, endPage: number): Promise<Buffer> {
@@ -518,6 +554,17 @@ async function processSplitTask(
       );
       return { task, ok: false, uploaded, errors, detectedRanges, detectionSignal, pageCount };
     }
+    // 번호 시퀀스가 정상이어도 문항↔내용이 한 칸씩 어긋날 수 있음(옛 형식) — 구간 첫 페이지에 짝지은 문항 제목이 있는지 확인
+    const alignment = checkTitleAlignment(
+      sortedRanges.map((r) => pageTexts[r.startPage - 1] ?? ''),
+      sortedProblems.map((p) => p.title),
+    );
+    if (alignment.bestOffset !== 0) {
+      errors.push(
+        `제목 정렬 불일치 — 구간이 문항과 ${alignment.bestOffset}칸 어긋남 (점수 ${JSON.stringify(alignment.scores)}), 분할 포기`,
+      );
+      return { task, ok: false, uploaded, errors, detectedRanges, detectionSignal, pageCount };
+    }
     const pairCount = sortedRanges.length;
 
     for (let idx = 0; idx < pairCount; idx++) {
@@ -585,7 +632,7 @@ async function processSplitTask(
 
 // ===== 진입점 — 첫 테스트: 138회 합숙 1일차 1교시 =====
 
-interface TestSpec {
+export interface TestSpec {
   fileId: string;
   fileName: string;
   sourceType: '기출' | '합숙' | '모의' | '자체';
@@ -801,14 +848,16 @@ const TEST_SPECS: TestSpec[] = [
 /**
  * mappings 전체에서 task 자동 생성. questions 필드가 이미 있으면 스킵 (idempotent).
  */
-function generateAllSpecsFromMap(map: any): TestSpec[] {
+export function generateAllSpecsFromMap(map: any): TestSpec[] {
   const specs: TestSpec[] = [];
+  const noResplit = new Set(NO_RESPLIT_KEYS);
 
   // 기출: map.기출[round]["1_정보관리"|"2_컴시응"|...] = {id, name, questions?}
   for (const [round, sessions] of Object.entries(map.기출 ?? {})) {
     for (const [key, entry] of Object.entries(sessions as Record<string, any>)) {
       if (!entry?.id) continue;
       if (entry.questions && Object.keys(entry.questions).length > 0) continue;
+      if (noResplit.has(`기출/${round}/${key}`)) continue;
       const m = key.match(/^(\d+)_(정보관리|컴시응)$/);
       if (!m) continue;
       const session = m[1];
@@ -842,16 +891,17 @@ function generateAllSpecsFromMap(map: any): TestSpec[] {
     }
   }
 
-  // 모의: map.모의.KPC[round]["1"|"2"|...] = {id, name, questions?}
-  // PDF 파일명에 종목 명시되면 그 종목으로 좁힘. 모의 round는 problems에서 -N 접미사일 수 있음.
+  // 모의: map.모의.KPC[round]["1" (통합 해설집) | "1_정보관리" | "1_컴시응" (옛 회차 종목별)] = {id, name, questions?}
+  // 종목별 해설집은 그 종목 문항으로만 좁힘. 모의 round는 problems에서 -N 접미사일 수 있음.
   for (const [round, sessions] of Object.entries(map.모의?.KPC ?? {})) {
-    for (const [session, entry] of Object.entries(sessions as Record<string, any>)) {
+    for (const [key, entry] of Object.entries(sessions as Record<string, any>)) {
       if (!entry?.id) continue;
       if (entry.questions && Object.keys(entry.questions).length > 0) continue;
-      const fname = entry.name ?? '';
-      let certScope: '정보관리' | '컴시응' | '공통' = '공통';
-      if (/컴퓨터시스템응용|컴시응|조직응용/.test(fname)) certScope = '컴시응';
-      else if (/정보관리/.test(fname)) certScope = '정보관리';
+      if (noResplit.has(`모의/KPC/${round}/${key}`)) continue;
+      const km = key.match(/^(\d+)(?:_(정보관리|컴시응))?$/);
+      if (!km) continue;
+      const session = km[1];
+      const certScope: '정보관리' | '컴시응' | '공통' = (km[2] as '정보관리' | '컴시응' | undefined) ?? '공통';
 
       const baseRound = round;
       specs.push({
@@ -875,6 +925,15 @@ function generateAllSpecsFromMap(map: any): TestSpec[] {
   return specs;
 }
 
+/**
+ * SPLIT_ONLY로 task 좁히기: '모의' → 모의 전체, '모의:종목별' → 모의 종목별 해설집만. 빈 값이면 전체.
+ */
+export function filterSpecs(specs: TestSpec[], only: string | undefined): TestSpec[] {
+  if (!only) return specs;
+  const [sourceType, scope] = only.split(':');
+  return specs.filter((s) => s.sourceType === sourceType && (scope !== '종목별' || s.certScope !== '공통'));
+}
+
 async function main() {
   const readDrive = makeReadDrive();
   const writeDrive = makeWriteDrive();
@@ -890,7 +949,10 @@ async function main() {
   const mappingPath = path.join(ROOT, 'data', 'mappings', 'explanation-files.json');
   const mappingForSpecs = fs.existsSync(mappingPath) ? JSON.parse(fs.readFileSync(mappingPath, 'utf8')) : {};
   const mode = process.env.SPLIT_MODE ?? 'test';
-  let specsToRun: TestSpec[] = mode === 'all' ? generateAllSpecsFromMap(mappingForSpecs) : TEST_SPECS;
+  let specsToRun: TestSpec[] = filterSpecs(
+    mode === 'all' ? generateAllSpecsFromMap(mappingForSpecs) : TEST_SPECS,
+    process.env.SPLIT_ONLY,
+  );
 
   // BATCH_OFFSET / BATCH_LIMIT 적용 (chunking)
   const offset = parseInt(process.env.BATCH_OFFSET ?? '0', 10);
@@ -978,8 +1040,10 @@ async function main() {
         entry = map.합숙?.[t.round]?.[key];
       } else if (t.sourceType === '모의') {
         // round가 "2010.10-1"이면 mappings는 "2010.10" 형태일 수 있음. 둘 다 시도.
+        // 종목별 해설집 task는 `교시_종목` 키, 통합 해설집은 `교시` 키
         const baseRound = t.round.replace(/-\d+$/, '');
-        entry = map.모의?.['KPC']?.[t.round]?.[t.session] ?? map.모의?.['KPC']?.[baseRound]?.[t.session];
+        const key = t.certScope === '공통' ? t.session : `${t.session}_${t.certScope}`;
+        entry = map.모의?.['KPC']?.[t.round]?.[key] ?? map.모의?.['KPC']?.[baseRound]?.[key];
       }
       if (entry) {
         entry.questions = questionsField;
@@ -1003,7 +1067,10 @@ async function main() {
   console.log('✔ tmp-split/split-result.json 저장');
 }
 
-main().catch((err) => {
-  console.error('실패:', err);
-  process.exit(1);
-});
+// 직접 실행(tsx scripts/split-pdfs.ts)일 때만 — 테스트에서 import할 때는 실행하지 않음
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  main().catch((err) => {
+    console.error('실패:', err);
+    process.exit(1);
+  });
+}

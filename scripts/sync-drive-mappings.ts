@@ -16,6 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import url from 'node:url';
 import { google, drive_v3 } from 'googleapis';
+import { mouiFileCert, mouiMappingKey, type MouiCert } from './lib/explanation-keys';
 
 const __filename = url.fileURLToPath(import.meta.url);
 const ROOT = path.resolve(path.dirname(__filename), '..');
@@ -155,8 +156,14 @@ function parseHapsuk(name: string): string | null {
  * 구형: '1교시해설-제22회(2010년10월)KPC기술사IMPACT실전모의고사_홍성우PE.pdf'
  *
  * 해설집/해설 키워드만 매핑 (모범답안/문제지 제외).
+ * cert: 파일명에 종목이 있으면(옛 회차 종목별 해설집) 그 종목, 종목 통합 해설집이면 null.
  */
-function parseMoui(name: string): { round: string; session: string } | null {
+export function parseMoui(name: string): { round: string; session: string; cert: MouiCert | null } | null {
+  const parsed = parseMouiRoundSession(name);
+  return parsed && { ...parsed, cert: mouiFileCert(name) };
+}
+
+function parseMouiRoundSession(name: string): { round: string; session: string } | null {
   if (/모범답안|문제지|문제\s*\.pdf$|^\d+교시문제/.test(name)) return null;
   if (!/해설집|해설/.test(name)) return null;
 
@@ -444,8 +451,11 @@ async function syncMappings(): Promise<{ map: MappingResult; stats: SyncStats }>
           folderMatched++;
           const academy = (map.모의['KPC'] ??= {});
           const round = (academy[parsed.round] ??= {});
-          if (!round[parsed.session]) {
-            round[parsed.session] = { id: f.id, name: f.name };
+          // 옛 회차는 교시마다 정보관리/컴시응 해설집이 따로 → 종목까지 키에 넣어 둘 다 보존
+          // (종목 없이 교시 키 하나에 먼저 찾은 파일만 남기면 다른 종목 문항에 엉뚱한 해설이 연결됨)
+          const key = mouiMappingKey(parsed.session, parsed.cert);
+          if (!round[key]) {
+            round[key] = { id: f.id, name: f.name };
             stats.모의_매핑++;
           }
         }
@@ -474,48 +484,48 @@ function writeOutput(map: MappingResult): void {
     자체: { KPC: {}, ITPE: {} },
   };
 
-  // 새 entry에 동일 fileId(통합 PDF) 매칭되면 questions 복원
-  for (const [keyPath, info] of existingQuestions) {
-    const target = getByPath(out, keyPath);
-    if (target && typeof target === 'object' && 'id' in target && target.id === info.id) {
-      (target as any).questions = info.questions;
-    }
-  }
+  // 같은 fileId(통합 PDF) entry에 questions 복원 — 키 경로가 바뀌어도(모의 종목 키 분리 등) 파일 기준으로 유지
+  restoreQuestionsByFileId(out, existingQuestions);
 
   fs.mkdirSync(path.dirname(OUT_FILE), { recursive: true });
   fs.writeFileSync(OUT_FILE, JSON.stringify(out, null, 2) + '\n', 'utf8');
 }
 
-function loadExistingQuestions(): Array<[string[], { id: string; questions: any }]> {
-  if (!fs.existsSync(OUT_FILE)) return [];
-  try {
-    const prev = JSON.parse(fs.readFileSync(OUT_FILE, 'utf8'));
-    const out: Array<[string[], { id: string; questions: any }]> = [];
-    function walk(node: any, keyPath: string[]) {
-      if (!node || typeof node !== 'object') return;
-      if (typeof node.id === 'string' && node.questions && typeof node.questions === 'object') {
-        out.push([keyPath, { id: node.id, questions: node.questions }]);
-      } else {
-        for (const [k, v] of Object.entries(node)) {
-          if (k.startsWith('$')) continue;
-          walk(v, [...keyPath, k]);
-        }
-      }
-    }
-    walk(prev, []);
-    return out;
-  } catch {
-    return [];
+/** 매핑 트리의 모든 entry({id, name, questions?})를 방문 ($ 메타 키 제외) */
+function forEachEntry(node: any, visit: (entry: any) => void): void {
+  if (!node || typeof node !== 'object') return;
+  if (typeof node.id === 'string') {
+    visit(node);
+    return;
+  }
+  for (const [k, v] of Object.entries(node)) {
+    if (!k.startsWith('$')) forEachEntry(v, visit);
   }
 }
 
-function getByPath(root: any, keyPath: string[]): any {
-  let cur = root;
-  for (const k of keyPath) {
-    if (!cur || typeof cur !== 'object' || !(k in cur)) return undefined;
-    cur = cur[k];
+/** 기존 매핑에서 fileId → questions(분할 PDF 정보) */
+export function collectQuestionsByFileId(prev: unknown): Map<string, unknown> {
+  const out = new Map<string, unknown>();
+  forEachEntry(prev, (entry) => {
+    if (entry.questions && typeof entry.questions === 'object') out.set(entry.id, entry.questions);
+  });
+  return out;
+}
+
+export function restoreQuestionsByFileId(next: unknown, questions: Map<string, unknown>): void {
+  forEachEntry(next, (entry) => {
+    const q = questions.get(entry.id);
+    if (q) entry.questions = q;
+  });
+}
+
+function loadExistingQuestions(): Map<string, unknown> {
+  if (!fs.existsSync(OUT_FILE)) return new Map();
+  try {
+    return collectQuestionsByFileId(JSON.parse(fs.readFileSync(OUT_FILE, 'utf8')));
+  } catch {
+    return new Map();
   }
-  return cur;
 }
 
 async function main() {
@@ -530,7 +540,10 @@ async function main() {
   console.log(`\n✔ ${path.relative(ROOT, OUT_FILE)} 갱신`);
 }
 
-main().catch((err) => {
-  console.error('Drive sync 실패:', err);
-  process.exit(1);
-});
+// 직접 실행(tsx scripts/sync-drive-mappings.ts)일 때만 — 테스트에서 import할 때는 실행하지 않음
+if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
+  main().catch((err) => {
+    console.error('Drive sync 실패:', err);
+    process.exit(1);
+  });
+}
