@@ -3,7 +3,7 @@
  * 2026-09 결함: 모의 키에 종목이 없어 정보관리/컴시응 해설집 중 하나만 남고 다른 종목 문항에 연결됨.
  */
 import { describe, expect, it } from 'vitest';
-import { mouiFileCert, mouiMappingKey, NO_RESPLIT_KEYS } from '../../scripts/lib/explanation-keys';
+import { mouiFileCert, mouiMappingKey, NO_RESPLIT_KEYS, sameMappingContent } from '../../scripts/lib/explanation-keys';
 import { collectQuestionsByFileId, parseMoui, restoreQuestionsByFileId } from '../../scripts/sync-drive-mappings';
 
 describe('모의 해설집 파일명 → 매핑 키', () => {
@@ -59,12 +59,33 @@ describe('sync의 분할 정보(questions) 보존', () => {
     expect(next.기출['140']['1_정보관리']).not.toHaveProperty('questions');
   });
 
-  it('M8: 재분할 금지 목록 12건 — 모의 종목별 해설집 3건은 종목 키 경로', () => {
-    expect(NO_RESPLIT_KEYS).toHaveLength(12);
+  it('M8: 재분할 금지 목록 11건 — 모의 종목별 해설집 3건은 종목 키 경로', () => {
+    expect(NO_RESPLIT_KEYS).toHaveLength(11);
     expect(NO_RESPLIT_KEYS.filter((k) => /_정보관리$/.test(k) && k.startsWith('모의/'))).toEqual([
       '모의/KPC/2012.12/2_정보관리',
       '모의/KPC/2013.05/3_정보관리',
       '모의/KPC/2014.04/2_정보관리',
     ]);
+  });
+});
+
+describe('시각만 바뀐 매핑 커밋 방지', () => {
+  it('M9: $generatedAt과 키 순서는 무시하고, 실제 매핑·분할 변경은 감지한다', () => {
+    const a = { $comment: 'c', $generatedAt: '2026-09-12T00:00:00Z', 기출: { '140': { '1_정보관리': { id: 'f1', name: 'n' } } } };
+    const reordered = { 기출: { '140': { '1_정보관리': { name: 'n', id: 'f1' } } }, $generatedAt: '2026-09-13T00:00:00Z', $comment: 'c' };
+    expect(sameMappingContent(a, reordered)).toBe(true);
+    const withSplit = structuredClone(a) as any;
+    withSplit.기출['140']['1_정보관리'].questions = { '1': { id: 'q1' } };
+    expect(sameMappingContent(a, withSplit)).toBe(false);
+  });
+});
+
+describe('파일명 연월 오기 보정', () => {
+  it('M10: 본문으로 확인한 연월 오기 파일은 실제 회차로, 회차 번호만 틀린 파일은 파일명 연월 그대로', () => {
+    expect(parseMoui('KPC기술사모의고사_해설집_31회_201104_정보관리_1교시_유동근PE.pdf')).toEqual({ round: '2011.07', session: '1', cert: '정보관리' });
+    expect(parseMoui('[KPC기술사IMPACT실전모의고사]_제76회 컴퓨터시스템응용_해설집_201704_1교시_v1.1.pdf')).toEqual({ round: '2017.06', session: '1', cert: '컴시응' });
+    expect(parseMoui('[KPC기술사IMPACT실전모의고사]_제116회_해설집_202311_4교시.pdf')).toEqual({ round: '2023.12', session: '4', cert: null });
+    expect(parseMoui('[정보관리]1교시해설-제25회(2011년01월)KPC기술사-최재준.pdf')?.round).toBe('2011.01');
+    expect(parseMoui('[KPC기술사IMPACT실전모의고사]_제75회 컴퓨터시스템응용_해설집_201704_2교시.pdf')?.round).toBe('2017.04');
   });
 });

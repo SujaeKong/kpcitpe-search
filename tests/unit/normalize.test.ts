@@ -44,8 +44,8 @@ describe('회차', () => {
 describe('종목 / 교시·일차', () => {
   it('N4: 종목 6가지 표기 → 3종', () => {
     expect(['관리', '정보관리'].map(normalizeCertScope)).toEqual(['정보관리', '정보관리']);
-    expect(['응용', '컴시응'].map(normalizeCertScope)).toEqual(['컴시응', '컴시응']);
-    expect(['공통', '조직', '보안'].map(normalizeCertScope)).toEqual(['공통', '공통', '공통']);
+    expect(['응용', '컴시응', '조직'].map(normalizeCertScope)).toEqual(['컴시응', '컴시응', '컴시응']); // 조직 = 조직응용(옛 컴시응)
+    expect(['공통', '보안'].map(normalizeCertScope)).toEqual(['공통', '공통']);
     expect(normalizeCertScope('기타')).toBeNull();
   });
 

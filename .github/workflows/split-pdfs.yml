@@ -25,7 +25,7 @@ on:
         type: string
         default: '5'
       only:
-        description: "task 좁히기 (예: '모의' 전체, '모의:종목별' 옛 회차 종목별 해설집만). 빈 값=전체"
+        description: "task 좁히기 (예: '모의' 전체, '모의:종목별' 옛 회차 종목별 해설집만, '모의:회차=2011.07,2023.12'). 빈 값=전체"
         type: string
         default: ''
 
@@ -100,7 +100,7 @@ jobs:
               git reset -q --hard origin/main
               npm run -s split:merge
               if git diff --quiet -- data/mappings/explanation-files.json; then
-                echo "최신 main에 이미 반영됨"; pushed=true; break
+                echo "최신 main에 이미 반영됨"; echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0
               fi
               git add data/mappings/explanation-files.json
               git commit -q -m "chore: split PDFs questions 매핑 갱신"

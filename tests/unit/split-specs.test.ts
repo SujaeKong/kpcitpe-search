@@ -5,7 +5,10 @@
  * - 문항↔구간이 한 칸씩 어긋난 분할(옛 형식 off-by-one)은 제목 대조로 차단
  */
 import { describe, expect, it } from 'vitest';
-import { checkTitleAlignment, filterSpecs, generateAllSpecsFromMap, mergeSplitResults, titleTokens } from '../../scripts/split-pdfs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { checkTitleAlignment, filterSpecs, generateAllSpecsFromMap, mergeSplitResultFile, mergeSplitResults, titleTokens } from '../../scripts/split-pdfs';
 import { makeProblem } from '../helpers/problem-fixture';
 
 const map = {
@@ -112,5 +115,34 @@ describe('분할 결과 머지', () => {
     const target = structuredClone(map) as any;
     expect(mergeSplitResults(target, [{ ok: true, task: moui('2010.10-2', '2', '공통'), uploaded: [upload(1, 'n1')] }])).toBe(1);
     expect(target.모의.KPC['2010.10']['2'].questions).toEqual({ '1': { id: 'n1', name: 'n1.pdf' } });
+  });
+});
+
+describe('분할 결과 파일 머지', () => {
+  it('P12: 같은 분할 결과를 다시 머지하면 매핑 파일을 다시 쓰지 않는다 ($generatedAt 유지)', () => {
+    const dir = mkdtempSync(path.join(tmpdir(), 'split-merge-'));
+    const mappingPath = path.join(dir, 'mapping.json');
+    const resultPath = path.join(dir, 'result.json');
+    writeFileSync(mappingPath, JSON.stringify({ $generatedAt: 'old', ...map }, null, 2) + '\n');
+    writeFileSync(
+      resultPath,
+      JSON.stringify([{ ok: true, task: { sourceType: '모의', round: '2016.01', session: '3', certScope: '컴시응' }, uploaded: [{ questionNumber: 7, fileId: 's7', fileName: 's7.pdf', validated: true }] }]),
+    );
+    try {
+      expect(mergeSplitResultFile(resultPath, mappingPath)).toBe(1);
+      const afterFirst = readFileSync(mappingPath, 'utf8');
+      expect(JSON.parse(afterFirst).$generatedAt).not.toBe('old');
+      mergeSplitResultFile(resultPath, mappingPath);
+      expect(readFileSync(mappingPath, 'utf8')).toBe(afterFirst);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('SPLIT_ONLY 회차 지정', () => {
+  it('P13: "모의:회차=…"는 지정한 회차의 모의 task만', () => {
+    expect(filterSpecs(specs, '모의:회차=2016.01, 2010.10').map((s) => s.fileId).sort()).toEqual(['app-3', 'combined-2']);
+    expect(filterSpecs(specs, '모의:회차=2099.01')).toEqual([]);
   });
 });

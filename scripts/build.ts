@@ -148,6 +148,22 @@ function loadExplanationMap(): ExplanationMap {
   }
 }
 
+const SPLIT_FILE_NAME = /^(?:기출|합숙|모의|자체)_[^_]+_[^_]+_(?:\d+일차_\d+교시|\d+)_\d+_(.+)\.pdf$/;
+const normalizeForMatch = (s: string) => s.toLowerCase().replace(/[^0-9a-z가-힣]/g, '');
+
+/**
+ * 분할 PDF 파일명(`{종류}_{회차}_{종목}_{교시}_{번호}_{주제어}.pdf`)의 주제어가 문항 제목·본문에 있는지.
+ * 기호는 무시(ISO/IEC ↔ ISOIEC). 파일명 형식이 다르거나 주제어가 없으면 판단 근거가 없으므로 true.
+ */
+export function splitMatchesProblem(splitName: string | undefined, p: Pick<Problem, 'title' | 'content'>): boolean {
+  const topic = splitName?.normalize('NFC').match(SPLIT_FILE_NAME)?.[1];
+  if (!topic) return true;
+  const tokens = topic.split('_').map(normalizeForMatch).filter((t) => t.length >= 2);
+  if (tokens.length === 0) return true;
+  const haystack = normalizeForMatch(`${p.title} ${p.content}`);
+  return tokens.some((t) => haystack.includes(t));
+}
+
 /**
  * problem에 explanationFileId / explanationFileName을 채움 (in-place).
  * 키 규칙:
@@ -187,9 +203,11 @@ export function applyExplanationMap(problems: Problem[], map: ExplanationMap): n
       }
     }
     if (entry) {
-      // 분할 PDF가 있으면 그 fileId 우선 사용, 없으면 통합 PDF로 fallback
-      const perQ =
+      // 분할 PDF가 있으면 그 fileId 우선 사용, 없으면 통합 PDF로 fallback.
+      // 분할본 주제어가 문항과 안 맞으면(교시 안 번호 중복·엑셀↔PDF 순서 차이) 엉뚱한 분할 대신 통합본.
+      const candidate =
         !wholeFileOnly && p.questionNumber != null ? entry.questions?.[String(p.questionNumber)] : undefined;
+      const perQ = candidate && splitMatchesProblem(candidate.name, p) ? candidate : undefined;
       if (perQ) {
         p.explanationFileId = perQ.id;
         p.explanationFileName = perQ.name ?? null;

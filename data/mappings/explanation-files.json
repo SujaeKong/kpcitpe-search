@@ -10061,38 +10061,6 @@
         "4": {
           "id": "1pC2a2MLZe_Xk2Y2bAPZlNYaNGbRaB_yR",
           "name": "KPC기술사모의고사_해설집_28회_201104_4교시_이지현PE.pdf"
-        },
-        "1_컴시응": {
-          "id": "1GN5pgvcLEhKn4SzzlEQMvrblfyeqvdsQ",
-          "name": "KPC기술사모의고사_해설집_31회_201104_조직응용_1교시_강자원PE_김봉석PE_유동근PE.pdf"
-        },
-        "4_컴시응": {
-          "id": "1C3EE1aZN_yO9h9xZVmMHr2J857eiducN",
-          "name": "KPC기술사모의고사_해설집_31회_201104_조직응용_4교시_강자원PE_전상화PE.pdf"
-        },
-        "4_정보관리": {
-          "id": "12235OwQxdteaaGU96fTyMYer3X6swYD5",
-          "name": "KPC기술사모의고사_해설집_31회_201104_정보관리_4교시_전상화PE.pdf"
-        },
-        "2_컴시응": {
-          "id": "13vVTJTpTW7Bw8hmKA_AX_ZEEebCpmUFC",
-          "name": "KPC기술사모의고사_해설집_31회_201104_조직응용_2교시_강자원PE_김봉석PE_서정훈PE.pdf"
-        },
-        "3_컴시응": {
-          "id": "15mV6ZUTp384cx0UxMKC6VJB_cjQqcIq9",
-          "name": "KPC기술사모의고사_해설집_31회_201104_조직응용_3교시_김봉석PE_이지현PE.pdf"
-        },
-        "2_정보관리": {
-          "id": "11TtYRdrZ_0UBeH1yjd-c5k4_mQDBSn1E",
-          "name": "KPC기술사모의고사_해설집_31회_201104_정보관리_2교시_서정훈PE.pdf"
-        },
-        "3_정보관리": {
-          "id": "13tsEt-IFZTc6Aepr1QFnKNwe_DBYdxr8",
-          "name": "KPC기술사모의고사_해설집_31회_201104_정보관리_3교시_이지현PE.pdf"
-        },
-        "1_정보관리": {
-          "id": "1Toiex67BLwNIV6mUtQLMfbmsijNfvcUk",
-          "name": "KPC기술사모의고사_해설집_31회_201104_정보관리_1교시_유동근PE.pdf"
         }
       },
       "2022.11": {
@@ -10702,10 +10670,6 @@
         }
       },
       "2017.04": {
-        "1_컴시응": {
-          "id": "1cqVTzVdNVLDfOanyYGTUbfZU_splVdSX",
-          "name": "[KPC기술사IMPACT실전모의고사]_제76회 컴퓨터시스템응용_해설집_201704_1교시_v1.1.pdf"
-        },
         "2_컴시응": {
           "id": "13XytoM87eY5rI8cVBQuntRyr_PWrZuaB",
           "name": "[KPC기술사IMPACT실전모의고사]_제75회 컴퓨터시스템응용_해설집_201704_2교시.pdf",
@@ -10789,6 +10753,10 @@
         "4_정보관리": {
           "id": "1XWbG9lASMctrXxOzlsDusXeHFk-iqVXF",
           "name": "[KPC기술사IMPACT실전모의고사]_제76회 정보관리_해설집_201706_4교시.pdf"
+        },
+        "1_컴시응": {
+          "id": "1cqVTzVdNVLDfOanyYGTUbfZU_splVdSX",
+          "name": "[KPC기술사IMPACT실전모의고사]_제76회 컴퓨터시스템응용_해설집_201704_1교시_v1.1.pdf"
         }
       },
       "2015.04": {
@@ -14111,10 +14079,6 @@
               "name": "모의_2023.11_공통_3_08_BMI.pdf"
             }
           }
-        },
-        "4": {
-          "id": "1S84vx0nCCb9jL060cqOTRUl_FIgssBN-",
-          "name": "[KPC기술사IMPACT실전모의고사]_제116회_해설집_202311_4교시.pdf"
         }
       },
       "2023.12": {
@@ -14193,6 +14157,10 @@
               "name": "모의_2023.12_공통_3_08_소켓Socket_통신과_관련하여.pdf"
             }
           }
+        },
+        "4": {
+          "id": "1S84vx0nCCb9jL060cqOTRUl_FIgssBN-",
+          "name": "[KPC기술사IMPACT실전모의고사]_제116회_해설집_202311_4교시.pdf"
         }
       },
       "2025.10": {
@@ -19987,6 +19955,40 @@
               "name": "모의_2012.06_정보관리_3_06_모바일_기기_등의.pdf"
             }
           }
+        }
+      },
+      "2011.07": {
+        "1_컴시응": {
+          "id": "1GN5pgvcLEhKn4SzzlEQMvrblfyeqvdsQ",
+          "name": "KPC기술사모의고사_해설집_31회_201104_조직응용_1교시_강자원PE_김봉석PE_유동근PE.pdf"
+        },
+        "4_컴시응": {
+          "id": "1C3EE1aZN_yO9h9xZVmMHr2J857eiducN",
+          "name": "KPC기술사모의고사_해설집_31회_201104_조직응용_4교시_강자원PE_전상화PE.pdf"
+        },
+        "4_정보관리": {
+          "id": "12235OwQxdteaaGU96fTyMYer3X6swYD5",
+          "name": "KPC기술사모의고사_해설집_31회_201104_정보관리_4교시_전상화PE.pdf"
+        },
+        "2_컴시응": {
+          "id": "13vVTJTpTW7Bw8hmKA_AX_ZEEebCpmUFC",
+          "name": "KPC기술사모의고사_해설집_31회_201104_조직응용_2교시_강자원PE_김봉석PE_서정훈PE.pdf"
+        },
+        "3_컴시응": {
+          "id": "15mV6ZUTp384cx0UxMKC6VJB_cjQqcIq9",
+          "name": "KPC기술사모의고사_해설집_31회_201104_조직응용_3교시_김봉석PE_이지현PE.pdf"
+        },
+        "2_정보관리": {
+          "id": "11TtYRdrZ_0UBeH1yjd-c5k4_mQDBSn1E",
+          "name": "KPC기술사모의고사_해설집_31회_201104_정보관리_2교시_서정훈PE.pdf"
+        },
+        "3_정보관리": {
+          "id": "13tsEt-IFZTc6Aepr1QFnKNwe_DBYdxr8",
+          "name": "KPC기술사모의고사_해설집_31회_201104_정보관리_3교시_이지현PE.pdf"
+        },
+        "1_정보관리": {
+          "id": "1Toiex67BLwNIV6mUtQLMfbmsijNfvcUk",
+          "name": "KPC기술사모의고사_해설집_31회_201104_정보관리_1교시_유동근PE.pdf"
         }
       }
     },

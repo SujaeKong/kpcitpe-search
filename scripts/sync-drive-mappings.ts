@@ -16,7 +16,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import url from 'node:url';
 import { google, drive_v3 } from 'googleapis';
-import { mouiFileCert, mouiMappingKey, type MouiCert } from './lib/explanation-keys';
+import { correctMouiRound, mouiFileCert, mouiMappingKey, sameMappingContent, type MouiCert } from './lib/explanation-keys';
 
 const __filename = url.fileURLToPath(import.meta.url);
 const ROOT = path.resolve(path.dirname(__filename), '..');
@@ -160,7 +160,8 @@ function parseHapsuk(name: string): string | null {
  */
 export function parseMoui(name: string): { round: string; session: string; cert: MouiCert | null } | null {
   const parsed = parseMouiRoundSession(name);
-  return parsed && { ...parsed, cert: mouiFileCert(name) };
+  // 파일명 연월이 실제 회차와 다른 해설집은 본문으로 확인한 회차로 보정 (MOUI_ROUND_OVERRIDES)
+  return parsed && { round: correctMouiRound(name, parsed.round), session: parsed.session, cert: mouiFileCert(name) };
 }
 
 function parseMouiRoundSession(name: string): { round: string; session: string } | null {
@@ -487,6 +488,10 @@ function writeOutput(map: MappingResult): void {
   // 같은 fileId(통합 PDF) entry에 questions 복원 — 키 경로가 바뀌어도(모의 종목 키 분리 등) 파일 기준으로 유지
   restoreQuestionsByFileId(out, existingQuestions);
 
+  // 매핑 내용이 그대로면 $generatedAt도 유지 — 시각만 바뀐 커밋·split·배포가 매일 쌓이지 않도록
+  const previous = readPreviousMapping();
+  if (previous && sameMappingContent(previous, out)) out.$generatedAt = previous.$generatedAt;
+
   fs.mkdirSync(path.dirname(OUT_FILE), { recursive: true });
   fs.writeFileSync(OUT_FILE, JSON.stringify(out, null, 2) + '\n', 'utf8');
 }
@@ -519,13 +524,17 @@ export function restoreQuestionsByFileId(next: unknown, questions: Map<string, u
   });
 }
 
-function loadExistingQuestions(): Map<string, unknown> {
-  if (!fs.existsSync(OUT_FILE)) return new Map();
+function readPreviousMapping(): any | null {
+  if (!fs.existsSync(OUT_FILE)) return null;
   try {
-    return collectQuestionsByFileId(JSON.parse(fs.readFileSync(OUT_FILE, 'utf8')));
+    return JSON.parse(fs.readFileSync(OUT_FILE, 'utf8'));
   } catch {
-    return new Map();
+    return null;
   }
+}
+
+function loadExistingQuestions(): Map<string, unknown> {
+  return collectQuestionsByFileId(readPreviousMapping());
 }
 
 async function main() {

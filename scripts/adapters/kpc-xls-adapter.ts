@@ -315,15 +315,17 @@ export function normalizeRound(
 /**
  * §2.5 종목 정규화.
  * 관리 → 정보관리
- * 응용, 컴시응 → 컴시응
- * 공통, 조직, 보안 → 공통
+ * 응용, 컴시응, 조직 → 컴시응
+ *   ('조직'은 2010~2011 모의의 조직응용 = 지금의 컴시응. 항상 '관리'와 짝이고 같은 회차에 '응용'과 함께 쓰인 적 없음,
+ *    해설집도 `[조직응용]N교시해설`)
+ * 공통, 보안 → 공통
  */
 export function normalizeCertScope(raw: string | null): CertScope | null {
   if (!raw) return null;
   const v = raw.trim();
   if (v === '관리' || v === '정보관리') return '정보관리';
-  if (v === '응용' || v === '컴시응') return '컴시응';
-  if (v === '공통' || v === '조직' || v === '보안') return '공통';
+  if (v === '응용' || v === '컴시응' || v === '조직') return '컴시응';
+  if (v === '공통' || v === '보안') return '공통';
   return null;
 }
 

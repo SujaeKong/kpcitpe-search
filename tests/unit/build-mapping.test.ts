@@ -2,7 +2,7 @@
  * 빌드 파이프라인: 엑셀 버전 선택 + 해설지 매핑 적용 규칙 (PROJECT.md §7.2).
  */
 import { describe, expect, it } from 'vitest';
-import { applyExplanationMap, pickLatestVersions, type ExplanationMap } from '../../scripts/build';
+import { applyExplanationMap, pickLatestVersions, splitMatchesProblem, type ExplanationMap } from '../../scripts/build';
 import { makeProblem } from '../helpers/problem-fixture';
 
 describe('엑셀 버전 선택', () => {
@@ -120,5 +120,26 @@ describe('모의 종목별 해설집 (2026-09 종목 키 분리)', () => {
 
   it('B9: 공통 문항은 통합 해설집 우선, 없으면 종목별 해설집의 통합본만 (분할본 번호는 쓰지 않음)', () => {
     expect(idsFor(moui('2016.04', '1', '공통', 1), moui('2016.01', '3', '공통', 7))).toEqual(['combined-q1', 'app-whole']);
+  });
+});
+
+describe('분할본 주제어 가드', () => {
+  it('B10: 교시 안에서 번호가 겹치면 주제어가 맞는 문항만 분할본, 나머지는 통합본 (모의 2011.05 1교시 12번)', () => {
+    const map: ExplanationMap = {
+      모의: { KPC: { '2011.05': { '1': { id: 'whole', questions: { '12': { id: 'split-12', name: '모의_2011.05_공통_1_12_CPLD.pdf' } } } } } },
+    };
+    const moui = (certScope: '정보관리' | '컴시응', title: string) =>
+      makeProblem({ sourceType: '모의', academy: 'KPC', round: '2011.05', session: '1', certScope, questionNumber: 12, title, content: title });
+    const problems = [moui('정보관리', 'CPLD(Complex Programmable Logic Device)'), moui('컴시응', 'SON(Self Organization Network)')];
+    applyExplanationMap(problems, map);
+    expect(problems.map((p) => p.explanationFileId)).toEqual(['split-12', 'whole']);
+  });
+
+  it('B11: splitMatchesProblem — 기호 차이는 허용, 주제어가 없으면 false, 형식이 다른 파일명은 판단 보류(true)', () => {
+    expect(splitMatchesProblem('기출_138_정보관리_1_03_ISOIEC.pdf', { title: 'ISO/IEC 42001:2023', content: '' })).toBe(true);
+    expect(splitMatchesProblem('합숙_2026.08_공통_1일차_2교시_02_6G_이동통신기술.pdf', { title: '6G 이동통신기술을 설명하시오', content: '' })).toBe(true);
+    expect(splitMatchesProblem('모의_2010.11_공통_2_07_최단경로를_구하는_알고리즘인.pdf', { title: '차세대 유비쿼터스 환경', content: '원천기술' })).toBe(false);
+    expect(splitMatchesProblem('q3.pdf', { title: '아무 문항', content: '' })).toBe(true);
+    expect(splitMatchesProblem(undefined, { title: 'x', content: '' })).toBe(true);
   });
 });

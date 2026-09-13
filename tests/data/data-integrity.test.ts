@@ -6,7 +6,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { kichulRoundOrder } from '../../scripts/adapters/kpc-xls-adapter';
-import { applyExplanationMap, type ExplanationEntry, type ExplanationMap } from '../../scripts/build';
+import { applyExplanationMap, splitMatchesProblem, type ExplanationEntry, type ExplanationMap } from '../../scripts/build';
 import { mouiFileCert, NO_RESPLIT_KEYS } from '../../scripts/lib/explanation-keys';
 import { isValidDriveFileId } from '../../src/lib/google-drive';
 import type { Problem } from '../../src/lib/types';
@@ -183,5 +183,31 @@ describe('해설지 매핑 무결성', () => {
         return (m[1] ?? null) !== fileCertName ? [`${path.join('/')}: 파일 종목 ${fileCertName}`] : [];
       });
     expect(bad.slice(0, 5)).toEqual([]);
+  });
+
+  it('D13: 연결된 분할본 파일명의 주제어가 문항 제목·본문에 있다 (번호 중복·순서 차이로 엉뚱한 분할 연결 방지)', () => {
+    expect(
+      violations((p) => !!p.explanationFileName && !splitMatchesProblem(p.explanationFileName, p) && `→ ${p.explanationFileName}`),
+    ).toEqual(NONE);
+  });
+
+  it('D14: 모의 해설집 파일명의 회차 번호와 매핑 연월이 1:1 (연월이 잘못 적힌 파일이 다른 회차에 매핑되는 것 감지)', () => {
+    // 파일명 회차 번호만 틀린 것으로 본문 확인된 예외: '제25회(2011년01월)' = 본문 제26회 2011년 1월
+    const NUMBER_TYPO = /제25회\(2011년01월\)/;
+    const numToRounds = new Map<number, Set<string>>();
+    const roundToNums = new Map<string, Set<number>>();
+    for (const { sourceType, path, entry } of entries) {
+      if (sourceType !== '모의' || NUMBER_TYPO.test(entry.name ?? '')) continue;
+      const n = Number((entry.name ?? '').match(/제?\s*(\d{2,3})\s*회/)?.[1]);
+      if (!n) continue;
+      const round = path[1]; // ['KPC', 회차, 키]
+      numToRounds.set(n, (numToRounds.get(n) ?? new Set()).add(round));
+      roundToNums.set(round, (roundToNums.get(round) ?? new Set()).add(n));
+    }
+    const conflicts = [
+      ...[...numToRounds].filter(([, rs]) => rs.size > 1).map(([n, rs]) => `제${n}회 → ${[...rs].join(', ')}`),
+      ...[...roundToNums].filter(([, ns]) => ns.size > 1).map(([r, ns]) => `${r} ← 제${[...ns].join('·')}회`),
+    ];
+    expect(conflicts).toEqual([]);
   });
 });

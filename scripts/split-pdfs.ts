@@ -24,7 +24,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { PDFDocument } from 'pdf-lib';
 // @ts-ignore
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
-import { NO_RESPLIT_KEYS } from './lib/explanation-keys';
+import { NO_RESPLIT_KEYS, sameMappingContent } from './lib/explanation-keys';
 
 const __filename = url.fileURLToPath(import.meta.url);
 const ROOT = path.resolve(path.dirname(__filename), '..');
@@ -972,9 +972,11 @@ export function mergeSplitResults(map: any, results: MergeableResult[]): number 
 
 /** split-result.json을 매핑 파일에 머지해 저장. 워크플로 push 충돌 시 최신 main 위에 재적용하는 데도 사용. */
 export function mergeSplitResultFile(resultPath: string, mappingPath: string): number {
-  const map = JSON.parse(fs.readFileSync(mappingPath, 'utf8'));
+  const original = fs.readFileSync(mappingPath, 'utf8');
+  const map = JSON.parse(original);
   const updated = mergeSplitResults(map, JSON.parse(fs.readFileSync(resultPath, 'utf8')));
-  if (updated > 0) {
+  // 이미 같은 분할 정보면 파일을 건드리지 않음 — 시각만 바뀐 커밋 방지
+  if (updated > 0 && !sameMappingContent(JSON.parse(original), map)) {
     map.$generatedAt = new Date().toISOString();
     fs.writeFileSync(mappingPath, JSON.stringify(map, null, 2) + '\n', 'utf8');
   }
@@ -982,12 +984,21 @@ export function mergeSplitResultFile(resultPath: string, mappingPath: string): n
 }
 
 /**
- * SPLIT_ONLY로 task 좁히기: '모의' → 모의 전체, '모의:종목별' → 모의 종목별 해설집만. 빈 값이면 전체.
+ * SPLIT_ONLY로 task 좁히기. 빈 값이면 전체.
+ *  - '모의' → 모의 전체
+ *  - '모의:종목별' → 모의 종목별 해설집만
+ *  - '모의:회차=2011.07,2023.12' → 해당 회차만
  */
 export function filterSpecs(specs: TestSpec[], only: string | undefined): TestSpec[] {
   if (!only) return specs;
-  const [sourceType, scope] = only.split(':');
-  return specs.filter((s) => s.sourceType === sourceType && (scope !== '종목별' || s.certScope !== '공통'));
+  const [sourceType, scope = ''] = only.split(':');
+  const rounds = scope.startsWith('회차=') ? new Set(scope.slice('회차='.length).split(',').map((r) => r.trim())) : null;
+  return specs.filter(
+    (s) =>
+      s.sourceType === sourceType &&
+      (scope !== '종목별' || s.certScope !== '공통') &&
+      (!rounds || rounds.has(s.round)),
+  );
 }
 
 async function main() {
