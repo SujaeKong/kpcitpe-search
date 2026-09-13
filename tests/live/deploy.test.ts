@@ -61,8 +61,16 @@ describe(`캐시 정책 (${BASE})`, () => {
 
   it('L3: problems.json 조건부 요청(If-None-Match)은 304로 응답한다', async () => {
     expect(problemsEtag).toBeTruthy();
-    const res = await fetch(`${BASE}/data/problems.json`, { headers: { 'if-none-match': problemsEtag! } });
-    expect(res.status).toBe(304);
+    // 배포 직후엔 엣지마다 새/옛 버전이 섞여 ETag가 바뀔 수 있음 → 직전 ETag로 다시 요청, 잠시 간격 두고 재시도
+    const statuses: number[] = [];
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const etag = (await fetch(`${BASE}/data/problems.json`, { method: 'HEAD' })).headers.get('etag');
+      const res = await fetch(`${BASE}/data/problems.json`, { headers: { 'if-none-match': etag ?? '' } });
+      statuses.push(res.status);
+      if (res.status === 304) break;
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
+    expect(statuses.at(-1), `응답 이력 ${statuses.join(',')}`).toBe(304);
   });
 
   it('L4: 배포된 JS가 모두 200이고, problems.json 로더는 no-cache를 쓰며 force-cache를 쓰지 않는다', async () => {
