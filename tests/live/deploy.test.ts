@@ -164,10 +164,19 @@ describe('운영 설정', () => {
   });
 
   it('L13: 없는 페이지·없는 회차는 404 (index.html로 200 응답하는 소프트 404 방지)', async () => {
+    // 배포 직후엔 엣지에 따라 옛 응답(200)이 잠시 섞일 수 있음 → 3초 간격 최대 5회 재시도 (f4df020 배포에서 발생)
     for (const target of ['/nope-page-for-test', `/rounds/${encodeURIComponent('모의')}/1999.01/`]) {
-      const res = await fetch(`${BASE}${target}`);
-      expect(res.status, target).toBe(404);
-      expect(await res.text(), target).toContain('페이지를 찾을 수 없습니다');
+      const statuses: number[] = [];
+      let body = '';
+      for (let attempt = 0; attempt < 5; attempt++) {
+        const res = await fetch(`${BASE}${target}`);
+        statuses.push(res.status);
+        body = await res.text();
+        if (res.status === 404) break;
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+      expect(statuses.at(-1), `${target} 응답 이력 ${statuses.join(',')}`).toBe(404);
+      expect(body, target).toContain('페이지를 찾을 수 없습니다');
     }
   });
 
