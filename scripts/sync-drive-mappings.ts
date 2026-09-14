@@ -124,7 +124,7 @@ interface ExplanationEntry {
   id: string;
   name?: string;
 }
-interface MappingResult {
+export interface MappingResult {
   기출: Record<string, Record<string, ExplanationEntry>>;
   합숙: Record<string, Record<string, ExplanationEntry>>;
   모의: Record<string, Record<string, Record<string, ExplanationEntry>>>;
@@ -142,7 +142,7 @@ const CERT_NORM = (raw: string): '정보관리' | '컴시응' | '공통' | null 
  *  - 'KPC 138회 대비 합숙해설집_1일차_1교시_통합.pdf' → '1일차_1교시'
  *  - 공백/언더스코어 모두 허용
  */
-function parseHapsuk(name: string): string | null {
+export function parseHapsuk(name: string): string | null {
   // 합숙해설집 키워드 + 일차/교시 추출
   if (!name.includes('합숙해설집')) return null;
   const m = name.match(/(\d+)\s*일차[\s_](\d+)\s*교시/);
@@ -217,7 +217,7 @@ function inferCert(text: string): Cert | null {
  * 매우 다양한 변형을 처리하기 위해 명시적 패턴들을 우선 매칭하고, 마지막에 일반 매처로 fallback.
  * 14+ 변형 패턴 cover.
  */
-function parseKichul(name: string): {
+export function parseKichul(name: string): {
   session: string;
   certScope: Cert;
   isBowan: boolean;
@@ -306,7 +306,7 @@ function parseKichul(name: string): {
  *     '제100회_KPC기술사모의고사_정보처리_모범답안(202205)'
  * 연월이 없으면 null (옛 회차 — 사용자 지시로 매핑 제외).
  */
-function extractRoundFromFolderName(name: string): string | null {
+export function extractRoundFromFolderName(name: string): string | null {
   // (YYYY-MM) or (YYYY-MM-N)
   let m = name.match(/\((\d{4})-(\d{1,2})(?:-(\d+))?\)/);
   if (m) {
@@ -323,7 +323,7 @@ function extractRoundFromFolderName(name: string): string | null {
 }
 
 /** 기출 폴더명에서 회차 추출 (예: '제138회 기출문제 해설집' → '138', '제089회 정보관리기술사' → '89'). */
-function extractKichulRoundFromFolderName(name: string): string | null {
+export function extractKichulRoundFromFolderName(name: string): string | null {
   const m = name.match(/제(\d+)회/);
   if (!m) return null;
   return String(parseInt(m[1], 10)); // zero-pad 제거
@@ -333,7 +333,7 @@ function extractKichulRoundFromFolderName(name: string): string | null {
 
 type Category = '기출' | '모의해설집' | '합숙' | null;
 
-function classifyCategory(folderName: string): Category {
+export function classifyCategory(folderName: string): Category {
   if (folderName.includes('기출문제') && !folderName.includes('모의')) return '기출';
   if (folderName.includes('해설집') && folderName.includes('모의')) return '모의해설집';
   if (folderName.includes('합숙')) return '합숙';
@@ -342,7 +342,7 @@ function classifyCategory(folderName: string): Category {
 
 // ===== 메인 =====
 
-interface SyncStats {
+export interface SyncStats {
   기출_매핑: number;
   합숙_매핑: number;
   모의_매핑: number;
@@ -350,11 +350,21 @@ interface SyncStats {
   파싱_실패_파일: number;
 }
 
-async function syncMappings(): Promise<{ map: MappingResult; stats: SyncStats }> {
-  const drive = makeDriveClient();
-  const rootId = process.env.DRIVE_ROOT_FOLDER_ID;
-  if (!rootId) throw new Error('DRIVE_ROOT_FOLDER_ID 환경변수 필요');
+export interface DriveTreeRound {
+  name: string;
+  pdfs: { id: string; name: string }[];
+}
+export interface DriveTreeCategory {
+  name: string;
+  rounds: DriveTreeRound[];
+}
 
+/**
+ * Drive 트리(카테고리 폴더 → 회차 폴더 → PDF)로 매핑을 만든다. Drive 호출 없는 순수 함수(테스트 대상).
+ * 규칙: 기출은 `교시_종목` 키·보완본 우선, 합숙은 `N일차_N교시`, 모의는 `교시`/`교시_종목`·연월 오기 보정,
+ * 같은 키는 먼저 찾은 파일 유지(기출 보완본만 예외).
+ */
+export function buildMappingFromTree(categories: DriveTreeCategory[]): { map: MappingResult; stats: SyncStats } {
   const map: MappingResult = { 기출: {}, 합숙: {}, 모의: {} };
   const stats: SyncStats = {
     기출_매핑: 0,
@@ -364,11 +374,7 @@ async function syncMappings(): Promise<{ map: MappingResult; stats: SyncStats }>
     파싱_실패_파일: 0,
   };
 
-  console.log('▶ Drive 루트 폴더 자식 조회');
-  const categoryFolders = await listChildren(drive, rootId);
-
-  for (const cat of categoryFolders) {
-    if (cat.mimeType !== FOLDER_MIME) continue;
+  for (const cat of categories) {
     const category = classifyCategory(cat.name);
     if (!category) {
       console.log(`  ↪ 스킵: ${cat.name}`);
@@ -376,12 +382,8 @@ async function syncMappings(): Promise<{ map: MappingResult; stats: SyncStats }>
     }
     console.log(`\n[${category}] ${cat.name}`);
 
-    const roundFolders = await listChildren(drive, cat.id);
-    for (const rf of roundFolders) {
-      if (rf.mimeType !== FOLDER_MIME) continue;
-
-      // 회차 폴더 안 PDF 수집 (자식 폴더 1단계까지 추적)
-      const pdfs = await collectPdfs(drive, rf.id, 2);
+    for (const rf of cat.rounds) {
+      const pdfs = rf.pdfs;
 
       if (category === '기출') {
         const round = extractKichulRoundFromFolderName(rf.name);
@@ -469,6 +471,28 @@ async function syncMappings(): Promise<{ map: MappingResult; stats: SyncStats }>
   }
 
   return { map, stats };
+}
+
+async function syncMappings(): Promise<{ map: MappingResult; stats: SyncStats }> {
+  const drive = makeDriveClient();
+  const rootId = process.env.DRIVE_ROOT_FOLDER_ID;
+  if (!rootId) throw new Error('DRIVE_ROOT_FOLDER_ID 환경변수 필요');
+
+  console.log('▶ Drive 루트 폴더 자식 조회');
+  const tree: DriveTreeCategory[] = [];
+  for (const cat of await listChildren(drive, rootId)) {
+    if (cat.mimeType !== FOLDER_MIME) continue;
+    const rounds: DriveTreeRound[] = [];
+    if (classifyCategory(cat.name)) {
+      for (const rf of await listChildren(drive, cat.id)) {
+        if (rf.mimeType !== FOLDER_MIME) continue;
+        // 회차 폴더 안 PDF 수집 (자식 폴더 1단계까지 추적)
+        rounds.push({ name: rf.name, pdfs: await collectPdfs(drive, rf.id, 2) });
+      }
+    }
+    tree.push({ name: cat.name, rounds });
+  }
+  return buildMappingFromTree(tree);
 }
 
 function writeOutput(map: MappingResult): void {
