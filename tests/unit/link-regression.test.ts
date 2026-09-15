@@ -6,6 +6,7 @@ import {
   compareExplanationLinks,
   formatLinkReport,
   isSplitFileName,
+  shouldAllowLinkDrop,
   type LinkProblem,
 } from '../../scripts/lib/link-regression';
 
@@ -85,5 +86,14 @@ describe('해설지 연결 회귀 판정', () => {
     expect(isSplitFileName('기출_138_정보관리_1_03_ISOIEC.pdf')).toBe(true);
     expect(isSplitFileName('KPC 140회 대비 합숙해설집_1일차_2교시_통합.pdf')).toBe(false);
     expect(isSplitFileName(null)).toBe(false);
+  });
+
+  it('X10: 허용은 로컬 ALLOW_LINK_DROP=1·수동 입력·커밋 제목의 토큰만 — 본문에 설명으로 적힌 토큰은 무시', () => {
+    expect(shouldAllowLinkDrop({ COMMIT_MESSAGE: 'fix(data): 어긋난 분할 폴백 [allow-link-drop]\n\n설명' })).toBe(true);
+    expect(shouldAllowLinkDrop({ COMMIT_MESSAGE: 'ci: 연결 급감 게이트\n\n의도한 감소는 [allow-link-drop]' })).toBe(false);
+    expect(shouldAllowLinkDrop({ ALLOW_LINK_DROP_INPUT: 'true', COMMIT_MESSAGE: '' })).toBe(true);
+    expect(shouldAllowLinkDrop({ ALLOW_LINK_DROP_INPUT: 'false' })).toBe(false);
+    expect(shouldAllowLinkDrop({ ALLOW_LINK_DROP: '1' })).toBe(true);
+    expect(shouldAllowLinkDrop({})).toBe(false);
   });
 });

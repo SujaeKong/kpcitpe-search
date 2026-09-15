@@ -14,7 +14,7 @@
 ## 언제 돌리나
 
 - **자동 (CI `deploy-cloudflare.yml`)**: `npm test` → 빌드 → `npm run test:data` → `npm run check:links` (운영 대비 해설지 연결 급감 검사) (셋 중 하나라도 실패 시 배포 중단) → 배포 → 운영 반영 대기 → `npm run test:live` (실패 시 빨간불, 배포는 이미 나감)
-- **의도한 해설지 연결 감소**(잘못된 연결 폴백·회차 삭제 등): 커밋 메시지에 `[allow-link-drop]`, 수동 배포는 입력 `allow_link_drop` 체크
+- **의도한 해설지 연결 감소**(잘못된 연결 폴백·회차 삭제 등): 커밋 **제목(첫 줄)** 에 `[allow-link-drop]` (본문에 적힌 토큰은 무시), 수동 배포는 입력 `allow_link_drop` 체크
 - **코드 수정 후**: `npm test` + `npm run test:e2e`
 - **신규 회차 엑셀/해설지 반영 후**: `npm run build:data && npm run test:data`, 배포 후 `npm run test:live`
 - 다른 주소 점검: `LIVE_BASE_URL=https://<preview>.kpcitpe-search.pages.dev npm run test:live`
@@ -196,6 +196,7 @@
 | X5–X6 | 회차가 사라지거나 전체 문항 수가 1% 넘게 줄면 위반 |
 | X7 | 분할본→통합본 대량 전환(연결 수 그대로) max(50, 2%) 초과 시 위반 |
 | X8–X9 | 보고서(허용 여부 안내), 분할 PDF 파일명 판별 |
+| X10 | 허용 판정: 로컬 `ALLOW_LINK_DROP=1`·수동 입력·커밋 **제목**의 토큰만, 본문 속 토큰은 무시 |
 
 > 과거 변경으로 보정(2026-09-15): 9/13 모의 종목 키 분리는 "모의 2014.11 연결 26→13"으로 걸림(의도한 감소 → `[allow-link-drop]` 대상), 9/14 조직 정규화·연월 보정, 9/15 분할 폴백 7건(분할본 −56, 허용 71)은 통과.
 

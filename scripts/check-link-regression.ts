@@ -3,12 +3,13 @@
  * sync·매핑·빌드 버그로 해설지 연결이 대량으로 끊기거나 회차가 사라지면 exit 1 (CI에서 배포 중단).
  *
  * 사용: npm run check:links [-- <기준 problems.json 경로 또는 URL>]  (기본: 운영 사이트)
- * 환경변수: ALLOW_LINK_DROP=1 (의도한 감소 허용), LIVE_BASE_URL, GITHUB_STEP_SUMMARY(있으면 요약 기록)
+ * 환경변수: ALLOW_LINK_DROP=1 (로컬에서 의도한 감소 허용), ALLOW_LINK_DROP_INPUT·COMMIT_MESSAGE (CI: 수동 입력·커밋 제목 토큰),
+ *          LIVE_BASE_URL, GITHUB_STEP_SUMMARY(있으면 요약 기록)
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import url from 'node:url';
-import { compareExplanationLinks, formatLinkReport, type LinkProblem } from './lib/link-regression';
+import { compareExplanationLinks, formatLinkReport, shouldAllowLinkDrop, type LinkProblem } from './lib/link-regression';
 
 const ROOT = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..');
 
@@ -29,7 +30,8 @@ async function loadBaseline(source: string): Promise<LinkProblem[] | null> {
 async function main() {
   const base = (process.env.LIVE_BASE_URL ?? 'https://kpcitpe-search.pages.dev').replace(/\/$/, '');
   const source = process.argv[2] ?? `${base}/data/problems.json`;
-  const allowDrop = process.env.ALLOW_LINK_DROP === '1';
+  const allowDrop = shouldAllowLinkDrop(process.env);
+  console.log(`의도한 감소 허용: ${allowDrop ? '예' : '아니오'}`);
 
   const baseline = await loadBaseline(source);
   if (!baseline) return;

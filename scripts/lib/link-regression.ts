@@ -111,6 +111,15 @@ export function compareExplanationLinks(
   return { before: b.total, after: a.total, violations, groupChanges };
 }
 
+/**
+ * 의도한 감소 허용 여부: 로컬 ALLOW_LINK_DROP=1, 수동 배포 입력 allow_link_drop=true, 또는 커밋 **제목(첫 줄)** 의
+ * `[allow-link-drop]`. 본문에 설명으로 적힌 토큰은 무시해 실수로 게이트가 꺼지지 않게 한다.
+ */
+export function shouldAllowLinkDrop(env: { ALLOW_LINK_DROP?: string; ALLOW_LINK_DROP_INPUT?: string; COMMIT_MESSAGE?: string }): boolean {
+  const subject = (env.COMMIT_MESSAGE ?? '').split('\n', 1)[0];
+  return env.ALLOW_LINK_DROP === '1' || env.ALLOW_LINK_DROP_INPUT === 'true' || subject.includes('[allow-link-drop]');
+}
+
 export function formatLinkReport(report: LinkRegressionReport, { allowDrop = false, maxRows = 15 } = {}): string {
   const stat = (s: LinkStats | null) => (s ? `${s.problems} / ${s.linked} / ${s.split}` : '없음');
   const lines = [
@@ -125,7 +134,7 @@ export function formatLinkReport(report: LinkRegressionReport, { allowDrop = fal
   if (report.violations.length === 0) {
     lines.push('✅ 급감 없음');
   } else {
-    lines.push(allowDrop ? '⚠️ 급감이 있지만 `[allow-link-drop]`으로 허용됨:' : '❌ 급감 감지 — 배포 중단 (의도한 감소면 커밋 메시지에 `[allow-link-drop]`):');
+    lines.push(allowDrop ? '⚠️ 급감이 있지만 `[allow-link-drop]`으로 허용됨:' : '❌ 급감 감지 — 배포 중단 (의도한 감소면 커밋 제목에 `[allow-link-drop]`):');
     for (const v of report.violations) lines.push(`- ${v}`);
   }
   if (report.groupChanges.length > 0) {

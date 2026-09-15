@@ -582,7 +582,7 @@ build.ts가 `problem.questionNumber`로 분할 PDF 우선 매핑, 없으면 통�
 ### 배포 전 해설지 연결 급감 감지 (2026-09-15)
 - `deploy-cloudflare.yml`에 data 테스트 다음 단계로 `npm run check:links`(`scripts/check-link-regression.ts`, 판정 `scripts/lib/link-regression.ts`): 새 빌드 `data/problems.json`을 운영 `/data/problems.json`과 출처·회차별 개수로 비교. 문항 ID는 쓰지 않음.
 - **배포 중단 조건**: 전체 문항 −1% 초과 · 회차 사라짐 · 전체 연결 감소 > max(50, 1%) · 회차 하나 연결 절반 이상 & 5건 이상 끊김 · 분할본 연결 감소 > max(50, 2%). 결과는 Actions 요약에 표로 기록.
-- **의도한 감소**(잘못된 연결 폴백, 회차 삭제): 커밋 메시지에 `[allow-link-drop]` 또는 수동 배포 입력 `allow_link_drop` → 경고만 남기고 배포. 운영 데이터를 못 읽으면 검사를 건너뜀(경고).
+- **의도한 감소**(잘못된 연결 폴백, 회차 삭제): 커밋 **제목(첫 줄)** 에 `[allow-link-drop]` 또는 수동 배포 입력 `allow_link_drop` → 경고만 남기고 배포. 본문에 설명으로 적힌 토큰은 무시(도입 커밋 본문의 토큰으로 허용이 켜졌던 문제 수정). 운영 데이터를 못 읽으면 검사를 건너뜀(경고).
 - 과거 변경 대입: 9/13 모의 종목 키 분리는 "모의 2014.11 연결 26→13"으로 걸림(허용 대상), 이후 변경들은 통과.
 
 **알려진 한계**:
