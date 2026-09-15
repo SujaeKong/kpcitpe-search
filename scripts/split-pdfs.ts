@@ -42,7 +42,7 @@ function loadSACredentials(): unknown {
   throw new Error('JSON도 파일경로도 아님');
 }
 
-function makeReadDrive() {
+export function makeReadDrive() {
   const auth = new google.auth.GoogleAuth({
     credentials: loadSACredentials() as any,
     scopes: ['https://www.googleapis.com/auth/drive.readonly'],
@@ -131,7 +131,7 @@ async function withRetry<T>(label: string, fn: () => Promise<T>, tries = 4): Pro
   throw lastErr;
 }
 
-async function downloadPdf(drive: any, fileId: string): Promise<Buffer> {
+export async function downloadPdf(drive: any, fileId: string): Promise<Buffer> {
   return withRetry(`download ${fileId}`, async () => {
     const res = await drive.files.get(
       { fileId, alt: 'media' },
@@ -197,7 +197,7 @@ function buildFileName(args: {
 
 // ===== PDF 텍스트 페이지별 추출 =====
 
-async function extractPageTexts(buf: Buffer): Promise<string[]> {
+export async function extractPageTexts(buf: Buffer): Promise<string[]> {
   const data = new Uint8Array(buf);
   const loadingTask = pdfjsLib.getDocument({ data, isEvalSupported: false });
   const doc = await loadingTask.promise;
@@ -213,7 +213,7 @@ async function extractPageTexts(buf: Buffer): Promise<string[]> {
 
 // ===== 문항 시작 페이지 검출 =====
 
-interface QuestionRange {
+export interface QuestionRange {
   questionNumber: number;
   startPage: number;
   endPage: number;
@@ -235,7 +235,7 @@ interface SignalConfig {
   validateSplit: (splitText: string, n: number) => boolean;
 }
 
-const SIGNALS: SignalConfig[] = [
+export const SIGNALS: SignalConfig[] = [
   {
     // "문 제 N." — 최신 합숙/기출/모의. 두 자리 숫자는 "1 0 ." 처럼 자릿수 사이 공백 변형 가능.
     // 페이지 시작 부분(첫 800자)만 검색 + "문제" 직전 글자가 한글이면 제외("기출문제 2 4." 같은 합성어 false positive 차단).
@@ -352,7 +352,7 @@ const SIGNALS: SignalConfig[] = [
   },
 ];
 
-function detectQuestionRangesWithSignal(pageTexts: string[]): {
+export function detectQuestionRangesWithSignal(pageTexts: string[]): {
   ranges: QuestionRange[];
   signal: string;
 } {
@@ -415,6 +415,46 @@ export function checkTitleAlignment(rangeTexts: string[], titles: string[]): { b
   }
   const bestOffset = [0, -1, 1, -2, 2].reduce((best, o) => (scores[o] > scores[best] ? o : best), 0);
   return { bestOffset, scores };
+}
+
+export type SplitGuardResult =
+  | { ok: true }
+  | { ok: false; reason: 'none' | 'count' | 'sequence' | 'alignment'; message: string };
+
+/**
+ * 분할 적용 전 안전 가드 (PROJECT.md §10). 순서: 검출 ≥3(아니면 none) → 검출 수 = 문항 수 → 번호 1..N 연속 → 제목 정렬.
+ * titles는 문항번호 오름차순으로 정렬한 문항 제목. alignment:false면 제목 정렬 검사 생략(본문을 가린 픽스처용).
+ */
+export function checkSplitGuards(
+  ranges: QuestionRange[],
+  pageTexts: string[],
+  titles: string[],
+  { alignment = true }: { alignment?: boolean } = {},
+): SplitGuardResult {
+  if (ranges.length === 0) {
+    return { ok: false, reason: 'none', message: '검출 실패 — 어떤 시그널도 ≥3 문항 추출 못 함. 통합 PDF fallback 권장.' };
+  }
+  if (ranges.length !== titles.length) {
+    return { ok: false, reason: 'count', message: `검출 ${ranges.length}개 ≠ problems ${titles.length}개 — 분할 포기, 통합 PDF fallback` };
+  }
+  // 검출된 문항번호가 1, 2, 3, ... 갭 없이 연속 — 페이지번호 mis-match 차단
+  const nums = [...ranges].sort((a, b) => a.questionNumber - b.questionNumber).map((r) => r.questionNumber);
+  if (!nums.every((n, i) => n === i + 1)) {
+    return { ok: false, reason: 'sequence', message: `검출 번호 시퀀스 비정상 [${nums.join(',')}] — 페이지번호 mis-match 의심, 분할 포기` };
+  }
+  // 번호가 정상이어도 문항↔내용이 한 칸씩 어긋날 수 있음(옛 형식) — 구간 첫 페이지에 짝지은 문항 제목이 있는지
+  if (alignment) {
+    const byPage = [...ranges].sort((a, b) => a.startPage - b.startPage);
+    const result = checkTitleAlignment(byPage.map((r) => pageTexts[r.startPage - 1] ?? ''), titles);
+    if (result.bestOffset !== 0) {
+      return {
+        ok: false,
+        reason: 'alignment',
+        message: `제목 정렬 불일치 — 구간이 문항과 ${result.bestOffset}칸 어긋남 (점수 ${JSON.stringify(result.scores)}), 분할 포기`,
+      };
+    }
+  }
+  return { ok: true };
 }
 
 // ===== 페이지 추출 =====
@@ -504,10 +544,20 @@ async function processSplitTask(
     console.log(`   시그널: ${detectionSignal}`);
     console.log(`   감지된 문항: ${detectedRanges.length}개 — ${detectedRanges.map((r) => `${r.questionNumber}번:p${r.startPage}-${r.endPage}`).join(', ')}`);
 
-    if (detectedRanges.length === 0) {
-      errors.push(`검출 실패 — 어떤 시그널도 ≥3 문항 추출 못 함. 통합 PDF fallback 권장.`);
+    // 안전 가드를 Drive 작업(폴더 생성·OVERWRITE 휴지통 이동)보다 먼저 검사 —
+    // 가드에서 포기할 분할인데 기존 분할본부터 휴지통으로 보내 매핑이 끊기는 일이 없도록
+    // problems와 PDF 내부 문항번호가 다른 경우(87회 등) 대응:
+    //   detectedRanges의 시작 페이지 순서 ↔ problems의 questionNumber 정렬 순서로 1:1 매핑.
+    //   파일명에는 problems의 questionNumber를 사용 (사이트 매핑이 그 번호로 키 생성).
+    const sortedProblems = [...task.problems]
+      .filter((p) => typeof p.questionNumber === 'number')
+      .sort((a, b) => (a.questionNumber as number) - (b.questionNumber as number));
+    const guard = checkSplitGuards(detectedRanges, pageTexts, sortedProblems.map((p) => p.title));
+    if (!guard.ok) {
+      errors.push(guard.message);
       return { task, ok: false, uploaded, errors, detectedRanges, detectionSignal, pageCount };
     }
+    const sortedRanges = [...detectedRanges].sort((a, b) => a.startPage - b.startPage);
 
     // 업로드 폴더 — _split/{종류}/{회차}/
     const typeFolderId = await ensureFolder(writeDrive, task.sourceType, splitRootId);
@@ -526,45 +576,6 @@ async function processSplitTask(
       console.log(`   ⌫ OVERWRITE: prefix "${prefix}" 매칭 ${toTrash.length}개 휴지통 이동`);
     }
 
-    // problems와 PDF 내부 문항번호가 다른 경우(87회 등) 대응:
-    //   detectedRanges의 questionNumber 정렬 순서 ↔ problems의 questionNumber 정렬 순서로 1:1 매핑.
-    //   파일명에는 problems의 questionNumber를 사용 (사이트 매핑이 그 번호로 키 생성).
-    const sortedProblems = [...task.problems]
-      .filter((p) => typeof p.questionNumber === 'number')
-      .sort((a, b) => (a.questionNumber as number) - (b.questionNumber as number));
-    const sortedRanges = [...detectedRanges].sort((a, b) => a.startPage - b.startPage);
-
-    if (sortedRanges.length !== sortedProblems.length) {
-      errors.push(
-        `검출 ${sortedRanges.length}개 ≠ problems ${sortedProblems.length}개 — 분할 포기, 통합 PDF fallback`,
-      );
-      return { task, ok: false, uploaded, errors, detectedRanges, detectionSignal, pageCount };
-    }
-    // 검출된 문항번호 시퀀스가 1, 2, 3, ... 단조증가 + 갭 없음 (≤ pairCount) — 페이지번호 mis-match 차단
-    const detectedNums = [...detectedRanges]
-      .sort((a, b) => a.questionNumber - b.questionNumber)
-      .map((r) => r.questionNumber);
-    const isValid =
-      detectedNums.length > 0 &&
-      detectedNums[0] === 1 &&
-      detectedNums.every((n, i) => n === i + 1);
-    if (!isValid) {
-      errors.push(
-        `검출 번호 시퀀스 비정상 [${detectedNums.join(',')}] — 페이지번호 mis-match 의심, 분할 포기`,
-      );
-      return { task, ok: false, uploaded, errors, detectedRanges, detectionSignal, pageCount };
-    }
-    // 번호 시퀀스가 정상이어도 문항↔내용이 한 칸씩 어긋날 수 있음(옛 형식) — 구간 첫 페이지에 짝지은 문항 제목이 있는지 확인
-    const alignment = checkTitleAlignment(
-      sortedRanges.map((r) => pageTexts[r.startPage - 1] ?? ''),
-      sortedProblems.map((p) => p.title),
-    );
-    if (alignment.bestOffset !== 0) {
-      errors.push(
-        `제목 정렬 불일치 — 구간이 문항과 ${alignment.bestOffset}칸 어긋남 (점수 ${JSON.stringify(alignment.scores)}), 분할 포기`,
-      );
-      return { task, ok: false, uploaded, errors, detectedRanges, detectionSignal, pageCount };
-    }
     const pairCount = sortedRanges.length;
 
     for (let idx = 0; idx < pairCount; idx++) {
@@ -846,82 +857,82 @@ const TEST_SPECS: TestSpec[] = [
 ];
 
 /**
- * mappings 전체에서 task 자동 생성. questions 필드가 이미 있으면 스킵 (idempotent).
+ * 매핑 항목 하나 → 분할 task (키 형식이 아니면 null). 이미 분할됐는지·재분할 금지인지는 보지 않는다.
+ *  - 기출: "1_정보관리" | "2_컴시응"
+ *  - 합숙: "1일차_1교시"
+ *  - 모의: "1" (통합 해설집, 전 종목) | "1_정보관리" | "1_컴시응" (옛 회차 종목별, 그 종목만). -N 회차 포함.
+ */
+export function specFromMappingEntry(
+  sourceType: '기출' | '합숙' | '모의',
+  round: string,
+  key: string,
+  entry: { id: string; name?: string },
+): TestSpec | null {
+  if (sourceType === '기출') {
+    const m = key.match(/^(\d+)_(정보관리|컴시응)$/);
+    if (!m) return null;
+    const session = m[1];
+    const certScope = m[2] as '정보관리' | '컴시응';
+    return {
+      fileId: entry.id,
+      fileName: entry.name ?? `기출_${round}_${key}.pdf`,
+      sourceType: '기출', round, certScope, session, sessionPart: null,
+      problemFilter: (p) =>
+        p.sourceType === '기출' && p.round === round && p.session === session && p.certScope === certScope,
+    };
+  }
+  if (sourceType === '합숙') {
+    const m = key.match(/^(\d+일차)_(\d+교시)$/);
+    if (!m) return null;
+    const [, session, sessionPart] = m;
+    return {
+      fileId: entry.id,
+      fileName: entry.name ?? `합숙_${round}_${key}.pdf`,
+      sourceType: '합숙', round, certScope: '공통', session, sessionPart,
+      problemFilter: (p) =>
+        p.sourceType === '합숙' && p.round === round && p.session === session && p.sessionPart === sessionPart,
+    };
+  }
+  const km = key.match(/^(\d+)(?:_(정보관리|컴시응))?$/);
+  if (!km) return null;
+  const session = km[1];
+  const certScope: '정보관리' | '컴시응' | '공통' = (km[2] as '정보관리' | '컴시응' | undefined) ?? '공통';
+  return {
+    fileId: entry.id,
+    fileName: entry.name ?? `모의_${round}_${session}.pdf`,
+    sourceType: '모의', round, certScope, session, sessionPart: null,
+    problemFilter: (p) => {
+      if (p.sourceType !== '모의' || p.session !== session) return false;
+      // round: "2010.10" mapping은 problems의 "2010.10-1", "2010.10-2"와도 매칭
+      if (p.round.replace(/-\d+$/, '') !== round && p.round !== round) return false;
+      // certScope: 명시된 경우 일치 필요. 공통이면 모든 certScope 허용.
+      return certScope === '공통' || p.certScope === certScope;
+    },
+  };
+}
+
+/**
+ * mappings 전체에서 task 자동 생성. questions 필드가 이미 있거나 재분할 금지(NO_RESPLIT_KEYS)면 스킵 (idempotent).
  */
 export function generateAllSpecsFromMap(map: any): TestSpec[] {
   const specs: TestSpec[] = [];
   const noResplit = new Set(NO_RESPLIT_KEYS);
-
-  // 기출: map.기출[round]["1_정보관리"|"2_컴시응"|...] = {id, name, questions?}
-  for (const [round, sessions] of Object.entries(map.기출 ?? {})) {
-    for (const [key, entry] of Object.entries(sessions as Record<string, any>)) {
-      if (!entry?.id) continue;
-      if (entry.questions && Object.keys(entry.questions).length > 0) continue;
-      if (noResplit.has(`기출/${round}/${key}`)) continue;
-      const m = key.match(/^(\d+)_(정보관리|컴시응)$/);
-      if (!m) continue;
-      const session = m[1];
-      const certScope = m[2] as '정보관리' | '컴시응';
-      specs.push({
-        fileId: entry.id,
-        fileName: entry.name ?? `기출_${round}_${key}.pdf`,
-        sourceType: '기출', round, certScope, session, sessionPart: null,
-        problemFilter: (p) =>
-          p.sourceType === '기출' && p.round === round && p.session === session && p.certScope === certScope,
-      });
+  const groups: ['기출' | '합숙' | '모의', string[], Record<string, any>][] = [
+    ['기출', ['기출'], map.기출 ?? {}],
+    ['합숙', ['합숙'], map.합숙 ?? {}],
+    ['모의', ['모의', 'KPC'], map.모의?.KPC ?? {}],
+  ];
+  for (const [sourceType, prefix, rounds] of groups) {
+    for (const [round, sessions] of Object.entries(rounds)) {
+      for (const [key, entry] of Object.entries(sessions as Record<string, any>)) {
+        if (!entry?.id) continue;
+        if (entry.questions && Object.keys(entry.questions).length > 0) continue;
+        if (noResplit.has([...prefix, round, key].join('/'))) continue;
+        const spec = specFromMappingEntry(sourceType, round, key, entry);
+        if (spec) specs.push(spec);
+      }
     }
   }
-
-  // 합숙: map.합숙[round]["1일차_1교시"|...] = {id, name, questions?}
-  for (const [round, sessions] of Object.entries(map.합숙 ?? {})) {
-    for (const [key, entry] of Object.entries(sessions as Record<string, any>)) {
-      if (!entry?.id) continue;
-      if (entry.questions && Object.keys(entry.questions).length > 0) continue;
-      const m = key.match(/^(\d+일차)_(\d+교시)$/);
-      if (!m) continue;
-      const session = m[1];
-      const sessionPart = m[2];
-      specs.push({
-        fileId: entry.id,
-        fileName: entry.name ?? `합숙_${round}_${key}.pdf`,
-        sourceType: '합숙', round, certScope: '공통', session, sessionPart,
-        problemFilter: (p) =>
-          p.sourceType === '합숙' && p.round === round && p.session === session && p.sessionPart === sessionPart,
-      });
-    }
-  }
-
-  // 모의: map.모의.KPC[round]["1" (통합 해설집) | "1_정보관리" | "1_컴시응" (옛 회차 종목별)] = {id, name, questions?}
-  // 종목별 해설집은 그 종목 문항으로만 좁힘. 모의 round는 problems에서 -N 접미사일 수 있음.
-  for (const [round, sessions] of Object.entries(map.모의?.KPC ?? {})) {
-    for (const [key, entry] of Object.entries(sessions as Record<string, any>)) {
-      if (!entry?.id) continue;
-      if (entry.questions && Object.keys(entry.questions).length > 0) continue;
-      if (noResplit.has(`모의/KPC/${round}/${key}`)) continue;
-      const km = key.match(/^(\d+)(?:_(정보관리|컴시응))?$/);
-      if (!km) continue;
-      const session = km[1];
-      const certScope: '정보관리' | '컴시응' | '공통' = (km[2] as '정보관리' | '컴시응' | undefined) ?? '공통';
-
-      const baseRound = round;
-      specs.push({
-        fileId: entry.id,
-        fileName: entry.name ?? `모의_${round}_${session}.pdf`,
-        sourceType: '모의', round: baseRound, certScope, session, sessionPart: null,
-        problemFilter: (p) => {
-          if (p.sourceType !== '모의') return false;
-          if (p.session !== session) return false;
-          // round: "2010.10" mapping은 problems의 "2010.10-1", "2010.10-2"와도 매칭
-          const pBase = p.round.replace(/-\d+$/, '');
-          if (pBase !== baseRound && p.round !== baseRound) return false;
-          // certScope: 명시된 경우 일치 필요. 공통이면 모든 certScope 허용.
-          if (certScope === '공통') return true;
-          return p.certScope === certScope;
-        },
-      });
-    }
-  }
-
   return specs;
 }
 
