@@ -398,7 +398,7 @@ build.ts가 `problem.questionNumber`로 분할 PDF 우선 매핑, 없으면 통�
 
 ### 9.1 deploy-cloudflare.yml
 - **트리거**: main push / 수동
-- **동작**: npm ci → **unit 테스트** → npm run build → **data 무결성 테스트** (둘 다 실패 시 배포 중단) → 시크릿 주입 → wrangler pages deploy → 운영 반영 대기(problems.json + JS 번들 목록이 dist와 일치) → **live 테스트**
+- **동작**: npm ci → **unit 테스트** → npm run build → **data 무결성 테스트** → **해설지 연결 회귀 검사**(운영 대비 급감 시 중단) (셋 중 하나라도 실패 시 배포 중단) → 시크릿 주입 → wrangler pages deploy → 운영 반영 대기(problems.json + JS 번들 목록이 dist와 일치) → **live 테스트**
 - **소요**: 1~2분
 
 ### 9.2 sync-drive.yml
@@ -578,6 +578,12 @@ build.ts가 `problem.questionNumber`로 분할 PDF 우선 매핑, 없으면 통�
 - **발견**: 제목 정렬 가드가 운영 중인 **기출 87회 1교시 컴시응** 분할본을 어긋남으로 판정 → Drive에서 확인하니 엑셀(1,2,4~14번)과 PDF 문항 순서가 달라 4~14번이 다른 문항 해설(`04_WiBro.pdf` = Haptics, `14_Haptics.pdf` = RFID). 분할본 파일명이 엑셀 제목으로 붙어 D13으로는 못 잡던 유형. 분할 13건 제거(통합본 폴백) + `NO_RESPLIT_KEYS` 추가(12건).
 - **전체 감사 도구**: `split-audit` 워크플로(`npm run split:audit`) — 이미 분할된 항목 전부를 통합 PDF로 다시 검출·가드 검사해 어긋남 후보를 보고(읽기 전용).
 - **전수 감사 결과(2026-09-15)**: 분할된 421개 중 정상 415, 제목 정렬 어긋남 6 — 기출 90/3컴·93/1정·93/2정, 모의 2023.04/2, 합숙 2025.02 2일차 1·2교시. 후보마다 분할본 2개씩 Drive에서 열어 보니 **12/12 모두 다른 문항 내용**(예: 합숙 2025.02 2일차 2교시 `04_QoS.pdf` = 최소신장트리, 모의 2023.04 2교시 `03_인공지능 윤리` = 사이버 침해 EDR/SIEM). 원인은 엑셀 문항번호와 PDF 속 문항 순서 차이. 6건 분할 제거(통합본 폴백) + `NO_RESPLIT_KEYS` 추가 → **18건**.
+
+### 배포 전 해설지 연결 급감 감지 (2026-09-15)
+- `deploy-cloudflare.yml`에 data 테스트 다음 단계로 `npm run check:links`(`scripts/check-link-regression.ts`, 판정 `scripts/lib/link-regression.ts`): 새 빌드 `data/problems.json`을 운영 `/data/problems.json`과 출처·회차별 개수로 비교. 문항 ID는 쓰지 않음.
+- **배포 중단 조건**: 전체 문항 −1% 초과 · 회차 사라짐 · 전체 연결 감소 > max(50, 1%) · 회차 하나 연결 절반 이상 & 5건 이상 끊김 · 분할본 연결 감소 > max(50, 2%). 결과는 Actions 요약에 표로 기록.
+- **의도한 감소**(잘못된 연결 폴백, 회차 삭제): 커밋 메시지에 `[allow-link-drop]` 또는 수동 배포 입력 `allow_link_drop` → 경고만 남기고 배포. 운영 데이터를 못 읽으면 검사를 건너뜀(경고).
+- 과거 변경 대입: 9/13 모의 종목 키 분리는 "모의 2014.11 연결 26→13"으로 걸림(허용 대상), 이후 변경들은 통과.
 
 **알려진 한계**:
 - 일부 옛 합숙(2010년대) PDF는 풀이지 형식 불규칙 → fallback (통합 PDF로 정상 표시)

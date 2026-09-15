@@ -13,7 +13,8 @@
 
 ## 언제 돌리나
 
-- **자동 (CI `deploy-cloudflare.yml`)**: `npm test` → 빌드 → `npm run test:data` (둘 다 실패 시 배포 중단) → 배포 → 운영 반영 대기 → `npm run test:live` (실패 시 빨간불, 배포는 이미 나감)
+- **자동 (CI `deploy-cloudflare.yml`)**: `npm test` → 빌드 → `npm run test:data` → `npm run check:links` (운영 대비 해설지 연결 급감 검사) (셋 중 하나라도 실패 시 배포 중단) → 배포 → 운영 반영 대기 → `npm run test:live` (실패 시 빨간불, 배포는 이미 나감)
+- **의도한 해설지 연결 감소**(잘못된 연결 폴백·회차 삭제 등): 커밋 메시지에 `[allow-link-drop]`, 수동 배포는 입력 `allow_link_drop` 체크
 - **코드 수정 후**: `npm test` + `npm run test:e2e`
 - **신규 회차 엑셀/해설지 반영 후**: `npm run build:data && npm run test:data`, 배포 후 `npm run test:live`
 - 다른 주소 점검: `LIVE_BASE_URL=https://<preview>.kpcitpe-search.pages.dev npm run test:live`
@@ -183,6 +184,20 @@
 | T2 | `<mark>` 구간 병합 |
 | T3 | 긴 본문 뒤쪽 매치는 앞뒤 `…` + maxLength 창 |
 | T4 | findIndicesForKey |
+
+### unit/link-regression.test.ts — 배포 전 해설지 연결 회귀 판정 (`npm run check:links`)
+운영 `problems.json`과 새 빌드를 출처·회차별 **개수**(문항·해설지 연결·분할본 연결)로 비교. 문항 ID는 쓰지 않아 정규화로 ID가 바뀌어도 오탐 없음.
+
+| ID | 내용 |
+|---|---|
+| X1–X2 | 같은 데이터·ID만 바뀜 → 위반 없음, 신규 회차·연결 증가는 변경 회차로만 보고 |
+| X3 | 전체 연결 감소 max(50, 1%)까지 허용 |
+| X4 | 회차 하나에서 연결이 절반 이상·5건 이상 끊기면 위반 |
+| X5–X6 | 회차가 사라지거나 전체 문항 수가 1% 넘게 줄면 위반 |
+| X7 | 분할본→통합본 대량 전환(연결 수 그대로) max(50, 2%) 초과 시 위반 |
+| X8–X9 | 보고서(허용 여부 안내), 분할 PDF 파일명 판별 |
+
+> 과거 변경으로 보정(2026-09-15): 9/13 모의 종목 키 분리는 "모의 2014.11 연결 26→13"으로 걸림(의도한 감소 → `[allow-link-drop]` 대상), 9/14 조직 정규화·연월 보정, 9/15 분할 폴백 7건(분할본 −56, 허용 71)은 통과.
 
 ### data/data-integrity.test.ts — 운영 데이터·매핑
 | ID | 내용 |

@@ -13,6 +13,7 @@
     "split:merge": "tsx scripts/merge-split-result.ts",
     "split:fixtures": "tsx scripts/capture-split-fixtures.ts",
     "split:audit": "tsx scripts/audit-split-alignment.ts",
+    "check:links": "tsx scripts/check-link-regression.ts",
     "split:debug": "tsx scripts/debug-pdf-text.ts",
     "split:diag": "tsx scripts/debug-multi.ts",
     "preview": "astro preview",
