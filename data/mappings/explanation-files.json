@@ -431,33 +431,7 @@
       },
       "3_컴시응": {
         "id": "11y5pi5YlX4O8WNkiagRQ05-rbZO3hNSq",
-        "name": "[조직응용-3교시]제90회 정보처리기술사 기출문제 해설집_신수관PE.pdf",
-        "questions": {
-          "1": {
-            "id": "1jy7joyGvFHm0zn0GU7OSLNoJOn8z79NO",
-            "name": "기출_90_컴시응_3_01_기업의_경쟁_환경이.pdf"
-          },
-          "2": {
-            "id": "15dPsqhw6ta9rExjQlu6PSFroMlQzsWY_",
-            "name": "기출_90_컴시응_3_02_ERP.pdf"
-          },
-          "4": {
-            "id": "1rvaYSaYnhi8CuV9r_GoA9E3utDcn44AR",
-            "name": "기출_90_컴시응_3_04_과거_IT는_기업의.pdf"
-          },
-          "5": {
-            "id": "1aa-Zjy5GYT9xhjFOw_DfoEWtf9rB62vd",
-            "name": "기출_90_컴시응_3_05_스토리지_가상화_개념.pdf"
-          },
-          "6": {
-            "id": "137plrB06OPQGmiob1Gy3H3ACREjAOA_o",
-            "name": "기출_90_컴시응_3_06_처리기프로세스_주소_지정.pdf"
-          },
-          "7": {
-            "id": "1c6vc18Wc_32__pBO7vrA8m8lPmM3dX0i",
-            "name": "기출_90_컴시응_3_07_RSO.pdf"
-          }
-        }
+        "name": "[조직응용-3교시]제90회 정보처리기술사 기출문제 해설집_신수관PE.pdf"
       },
       "2_컴시응": {
         "id": "1TaS4p6byqtVgaExe1PHeNkRMMCala626",
@@ -681,91 +655,11 @@
       },
       "2_정보관리": {
         "id": "1wS00OCcuYUD5YtGgUf3qOIDS-jzrriYZ",
-        "name": "[정보관리-2교시]제93회 정보처리기술사 KPC기출문제해설집_by임행진PE.pdf",
-        "questions": {
-          "1": {
-            "id": "16CQ2DrYDxT9O5a5UI8_30Gu02Vtmj2Nr",
-            "name": "기출_93_정보관리_2_01_SNS.pdf"
-          },
-          "3": {
-            "id": "1p-NtzJIpNpuLmd1PKgfy4kUTrSSqilWc",
-            "name": "기출_93_정보관리_2_03_시스템_다이내믹스System_Dynamics에서.pdf"
-          },
-          "4": {
-            "id": "1XvkwQTPWn5m7AoZoY8mtRAb4JSVyU2ne",
-            "name": "기출_93_정보관리_2_04_SM.pdf"
-          },
-          "5": {
-            "id": "1cZUx_ox00GTwoTrBgUAdLxp2rYhI0gwF",
-            "name": "기출_93_정보관리_2_05_신경회로망은_어떠한_방법에.pdf"
-          },
-          "6": {
-            "id": "1GvPhXJJXO6d5zDZQShtVvNhcm8XltC2U",
-            "name": "기출_93_정보관리_2_06_EVA.pdf"
-          },
-          "7": {
-            "id": "1huAY2Q14W2MzBljPrjFh1l1eKd6L7Jdg",
-            "name": "기출_93_정보관리_2_07_BPM.pdf"
-          }
-        }
+        "name": "[정보관리-2교시]제93회 정보처리기술사 KPC기출문제해설집_by임행진PE.pdf"
       },
       "1_정보관리": {
         "id": "1dldatRBmOR9LVZD0yU_Hxl0-AhTInoop",
-        "name": "[정보관리-1교시]제93회 정보처리기술사 KPC기출문제해설집_by설영주PE_박지혜PE.pdf",
-        "questions": {
-          "1": {
-            "id": "1zEFbrBYdHfEnr_6tJRyG7d8b6Z-WqmLz",
-            "name": "기출_93_정보관리_1_01_개방형_혁신Open_Innovation과.pdf"
-          },
-          "2": {
-            "id": "14bU8R4r1iIMc4IWpw3SwDjFd4UxpLPU4",
-            "name": "기출_93_정보관리_1_02_DDOS.pdf"
-          },
-          "5": {
-            "id": "1Fi35sbFDl85EK-MmZ80MA4stIQyx42xT",
-            "name": "기출_93_정보관리_1_05_NFC.pdf"
-          },
-          "8": {
-            "id": "1C68ciEpgU4nH4BxuX8mxpfKt_pw0U5yy",
-            "name": "기출_93_정보관리_1_08_NOSQL.pdf"
-          },
-          "13": {
-            "id": "1RIkGa1OLZ9SzSPBKP463dIC5gNepwi3f",
-            "name": "기출_93_정보관리_1_13_퍼지시스템의_응용에서_소속함수Membership.pdf"
-          },
-          "14": {
-            "id": "1pp9Dr23a5OkagwBZJLXW_VjJJ9_FSaP7",
-            "name": "기출_93_정보관리_1_14_이벤트_기반의_시스템.pdf"
-          },
-          "15": {
-            "id": "1cVSLWSq-rlHz2d9JT_ldbn0soevTcNQB",
-            "name": "기출_93_정보관리_1_15_VRM.pdf"
-          },
-          "16": {
-            "id": "151zI9mW5zPl3QpjRUWTQSBiAVE9H56cv",
-            "name": "기출_93_정보관리_1_16_UCUnified_Communications가_기존.pdf"
-          },
-          "17": {
-            "id": "12mT7rFMhaDQsDsafYn5kjQ6QCuS5E7xc",
-            "name": "기출_93_정보관리_1_17_SCRUM.pdf"
-          },
-          "18": {
-            "id": "1I6Ccuj1W8V2OXAb4toOeLRlXNKrjd5fa",
-            "name": "기출_93_정보관리_1_18_메타모델링Metamodeling을_온톨로지Ontolog.pdf"
-          },
-          "19": {
-            "id": "1JzWd0_PpPlDb3U4Kc-xRZ8PnvmgDeJMc",
-            "name": "기출_93_정보관리_1_19_크라우드소싱Crowdsourcing을_아웃소싱Outso.pdf"
-          },
-          "20": {
-            "id": "1TJjIrGfGT7XxrXWxZYW_f4q_pldvSjaC",
-            "name": "기출_93_정보관리_1_20_유비쿼터스_가상현실에_대하여.pdf"
-          },
-          "21": {
-            "id": "1zXNRLlI5osLzQ-rJ9y-a2257Qh3j4-47",
-            "name": "기출_93_정보관리_1_21_전문가_시스템에서_추론의.pdf"
-          }
-        }
+        "name": "[정보관리-1교시]제93회 정보처리기술사 KPC기출문제해설집_by설영주PE_박지혜PE.pdf"
       },
       "4_정보관리": {
         "id": "15Nuhvk-234g3C59b571tpyuEOIUjY-RC",
@@ -7217,41 +7111,7 @@
     "2025.02": {
       "2일차_2교시": {
         "id": "1eiTVfL8WULy4sCB9EkY6EGuOiIoafeEP",
-        "name": "KPC 135회 대비 합숙해설집_2일차_2교시.pdf",
-        "questions": {
-          "1": {
-            "id": "1AN5kgHK7J9zw3DPaVnoMq1Lnx4oLzi9D",
-            "name": "합숙_2025.02_공통_2일차_2교시_01_실제메모리의_용량보다_더.pdf"
-          },
-          "2": {
-            "id": "1HwbxdXaD2ScdHp2QGdjG8CWZWOF6eUY6",
-            "name": "합숙_2025.02_공통_2일차_2교시_02_컴퓨터를_이용해_문제.pdf"
-          },
-          "3": {
-            "id": "1NM4fOoBbvB-owolGO02ITTSPGbocVoAc",
-            "name": "합숙_2025.02_공통_2일차_2교시_03_심층신경망은_은닉층의_개수를.pdf"
-          },
-          "4": {
-            "id": "1rz4pttlOnc3RFEBGIsWbSy4WJHKsrQ_Z",
-            "name": "합숙_2025.02_공통_2일차_2교시_04_QoSQuality_of_Service.pdf"
-          },
-          "5": {
-            "id": "1FHScbiqW3s_O0P9t7O8aAe_zBZDQL4BG",
-            "name": "합숙_2025.02_공통_2일차_2교시_05_데이터베이스_조인Join_유형.pdf"
-          },
-          "6": {
-            "id": "17wqiQ8Orv4SbX43WMn796qVtp9vX7p3q",
-            "name": "합숙_2025.02_공통_2일차_2교시_06_MST.pdf"
-          },
-          "7": {
-            "id": "1TA-xpCJDR5ZzGq3kOvl2KqIOJYQsyNyp",
-            "name": "합숙_2025.02_공통_2일차_2교시_07_이미지_비디오_생성형.pdf"
-          },
-          "8": {
-            "id": "1GSDVLZBVqsuQ6aUBkfab6Yp_hrubDLyg",
-            "name": "합숙_2025.02_공통_2일차_2교시_08_Real_Time_Scheduling이.pdf"
-          }
-        }
+        "name": "KPC 135회 대비 합숙해설집_2일차_2교시.pdf"
       },
       "1일차_2교시": {
         "id": "19HXy24yH3Nu8wnxzrBfF894rmhdTj-Pw",
@@ -7293,73 +7153,7 @@
       },
       "2일차_1교시": {
         "id": "1QXxYQmCtD4Jf8UkyG75VBvKgrFnOcmZ-",
-        "name": "KPC 135회 대비 합숙해설집_2일차_1교시.pdf",
-        "questions": {
-          "1": {
-            "id": "12bZLujs0MXXcq4KvBaqQo5YDHhmsUSb-",
-            "name": "합숙_2025.02_공통_2일차_1교시_01_MSA.pdf"
-          },
-          "2": {
-            "id": "1klW9J8lxc2WIh-hddMFpgibh_0c2DjC0",
-            "name": "합숙_2025.02_공통_2일차_1교시_02_소프트웨어_유지보수.pdf"
-          },
-          "3": {
-            "id": "1mLlSsDu5L4q-U-iG1kMRJlvehr2kjAiW",
-            "name": "합숙_2025.02_공통_2일차_1교시_03_Secure_by_Design과.pdf"
-          },
-          "4": {
-            "id": "1jy3CZKGHZ4e-_YqyfCbe00p40X2ltqQY",
-            "name": "합숙_2025.02_공통_2일차_1교시_04_데이터_오케스트레이션.pdf"
-          },
-          "5": {
-            "id": "1el3KZFC_8pxQHemadHklBv15GmXqg4Yb",
-            "name": "합숙_2025.02_공통_2일차_1교시_05_소프트웨어_테스트_정적Static.pdf"
-          },
-          "6": {
-            "id": "16vAhdHnWBGBLWVrvhP2e-Ohkz9VrO-Pg",
-            "name": "합숙_2025.02_공통_2일차_1교시_06_스푸핑Spoofing_공격.pdf"
-          },
-          "7": {
-            "id": "13fmcc4BxV2sS08SG5Rnr5Zd6HCCUAjdY",
-            "name": "합숙_2025.02_공통_2일차_1교시_07_기계_망각Machine_Unlearning.pdf"
-          },
-          "8": {
-            "id": "1V9oUm17_2KAtlLLp3oqAAyAstKPG8lMM",
-            "name": "합숙_2025.02_공통_2일차_1교시_08_STPA.pdf"
-          },
-          "9": {
-            "id": "1TiLMLIRxte8dj4uP1sjdAHrV-H3LFaqY",
-            "name": "합숙_2025.02_공통_2일차_1교시_09_개인정보의_안전성_확보조치.pdf"
-          },
-          "10": {
-            "id": "1fhjkxIqINF50jHDZ70YPWAT-AUhcFJeG",
-            "name": "합숙_2025.02_공통_2일차_1교시_10_PMO.pdf"
-          },
-          "11": {
-            "id": "13CMH4b_SKHQ2Jr8ydLDRi3kSllJuOlHA",
-            "name": "합숙_2025.02_공통_2일차_1교시_11_거브테크GovTech.pdf"
-          },
-          "12": {
-            "id": "1yJ5p818c-XC_T0DT5Hw4iIyqklxVBHtH",
-            "name": "합숙_2025.02_공통_2일차_1교시_12_레브옵스RevOps.pdf"
-          },
-          "13": {
-            "id": "1LXL2R8hx1AjZ2OBqadfjed6FtHXDRJJ2",
-            "name": "합숙_2025.02_공통_2일차_1교시_13_그린데이터센터.pdf"
-          },
-          "14": {
-            "id": "14q-Q20S3AnGlj9gvktO_AhEe17iinrYC",
-            "name": "합숙_2025.02_공통_2일차_1교시_14_연결함정Connection_Trap.pdf"
-          },
-          "15": {
-            "id": "1dyGhsNNiqZey45VEA75qUxpB1Kfm-yMh",
-            "name": "합숙_2025.02_공통_2일차_1교시_15_BCP.pdf"
-          },
-          "16": {
-            "id": "1V_xZHI25Iwbm4HXevj-AH5DsaVK9h_gI",
-            "name": "합숙_2025.02_공통_2일차_1교시_16_WBS.pdf"
-          }
-        }
+        "name": "KPC 135회 대비 합숙해설집_2일차_1교시.pdf"
       },
       "1일차_1교시": {
         "id": "1gWhVf4v6YDcm2kiixgXH6ajT5R4yjb_3",
@@ -13842,37 +13636,7 @@
         },
         "2": {
           "id": "1rvU6C2rqJxpbsdA8ESJsPXN1MDFYgNgq",
-          "name": "[KPC기술사IMPACT실전모의고사]_제111회_해설집_202304_2교시.pdf",
-          "questions": {
-            "1": {
-              "id": "1Lljn0w75VjkSUFr5ItITnJXPZOsiRzSK",
-              "name": "모의_2023.04_공통_2_01_프롬프트_엔지니어링Prompt_Engineering에.pdf"
-            },
-            "3": {
-              "id": "1mEzKbd4hb2JwCIveVuzweftMPm3zmPVK",
-              "name": "모의_2023.04_공통_2_03_인공지능의_윤리적_문제.pdf"
-            },
-            "4": {
-              "id": "1OztiZHpkKlVK9Li6kzOJy6M9-Kw6Kpih",
-              "name": "모의_2023.04_공통_2_04_소프트웨어_개발방법론의_4가지.pdf"
-            },
-            "5": {
-              "id": "1uyRIxj_RoUY6S8tIG3gl-DKnAHOPLraA",
-              "name": "모의_2023.04_공통_2_05_데이터_웨어하우스Data_Warehouse와.pdf"
-            },
-            "6": {
-              "id": "1ISbLSi5qVGebLah6ccHOR9LlyBLpD_HI",
-              "name": "모의_2023.04_공통_2_06_Fagin의_정리에_대해.pdf"
-            },
-            "7": {
-              "id": "18hZ4CwZAt_GkerIU9M0EbWOtXoaXI3OW",
-              "name": "모의_2023.04_공통_2_07_캐시기억장치의_개념_및.pdf"
-            },
-            "8": {
-              "id": "1qgAfGbz3eecjchP58qS7Z3zEq3KaIh5p",
-              "name": "모의_2023.04_공통_2_08_ACID.pdf"
-            }
-          }
+          "name": "[KPC기술사IMPACT실전모의고사]_제111회_해설집_202304_2교시.pdf"
         },
         "3": {
           "id": "1xDHHDCsSeeWSFKi-mrdO0xMJe7DXTtZc",
