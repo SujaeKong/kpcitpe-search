@@ -5,61 +5,7 @@
     "87": {
       "1_컴시응": {
         "id": "1U0W5h-ElIoYSpkpFV0OMl7BYg2z3GG4N",
-        "name": "87회-조직응용 문제풀이집-1교시 v1.0.pdf",
-        "questions": {
-          "1": {
-            "id": "1v3YKvlPdB3BykjHtRhj76gXWZterTPk8",
-            "name": "기출_87_컴시응_1_01_UMB.pdf"
-          },
-          "2": {
-            "id": "1OpSHuKB60yYDQ9KYJF98vbyDEkizrKAd",
-            "name": "기출_87_컴시응_1_02_Semantic_Web.pdf"
-          },
-          "4": {
-            "id": "1C_vHV_tnwgJ5BJiZJOmWRXjcqHrFbDuW",
-            "name": "기출_87_컴시응_1_04_WiBro.pdf"
-          },
-          "5": {
-            "id": "1QePFTKqtnW3xir643T1Qf5yoZMYHXMg8",
-            "name": "기출_87_컴시응_1_05_ESM.pdf"
-          },
-          "6": {
-            "id": "144uC5ArpReVT93t2QuTA5IEaM_eL6GeS",
-            "name": "기출_87_컴시응_1_06_ITS.pdf"
-          },
-          "7": {
-            "id": "1oaCfCeW5JSQ52UkUy-yDlZpOfJVXBdlj",
-            "name": "기출_87_컴시응_1_07_IEEE.pdf"
-          },
-          "8": {
-            "id": "1HA8k6OjKHWpt1Zw9sDhNXBLXfdN_oPKE",
-            "name": "기출_87_컴시응_1_08_X-I.pdf"
-          },
-          "9": {
-            "id": "1_jujnLexCyyHabd8ATkkQvoLNbaC-JBm",
-            "name": "기출_87_컴시응_1_09_RTLS.pdf"
-          },
-          "10": {
-            "id": "19LbpHnm4-ENr_rbfn68KJzCjEpEqdZAb",
-            "name": "기출_87_컴시응_1_10_Data_de-duplication.pdf"
-          },
-          "11": {
-            "id": "1Ud8rCetvC7lzChZhtF-QReF58HUoo7Rj",
-            "name": "기출_87_컴시응_1_11_ARAugmented_Reality.pdf"
-          },
-          "12": {
-            "id": "19zOJvxWNWAcPwOBDEqR8IFtQcIphrx5-",
-            "name": "기출_87_컴시응_1_12_Zigbee.pdf"
-          },
-          "13": {
-            "id": "1cjEFBeYK8v2ZVtIAaPewhnmk9e3qev2D",
-            "name": "기출_87_컴시응_1_13_RFID.pdf"
-          },
-          "14": {
-            "id": "1RUuxc3jMCAPB0FjLp6WXXg0LzfNycLG2",
-            "name": "기출_87_컴시응_1_14_Haptics.pdf"
-          }
-        }
+        "name": "87회-조직응용 문제풀이집-1교시 v1.0.pdf"
       },
       "2_컴시응": {
         "id": "1FjvRxoC2kv9XZX_HkU0bzwkX4AUtXZvB",

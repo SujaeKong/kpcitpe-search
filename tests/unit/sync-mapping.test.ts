@@ -59,8 +59,8 @@ describe('sync의 분할 정보(questions) 보존', () => {
     expect(next.기출['140']['1_정보관리']).not.toHaveProperty('questions');
   });
 
-  it('M8: 재분할 금지 목록 11건 — 모의 종목별 해설집 3건은 종목 키 경로', () => {
-    expect(NO_RESPLIT_KEYS).toHaveLength(11);
+  it('M8: 재분할 금지 목록 12건 — 모의 종목별 해설집 3건은 종목 키 경로', () => {
+    expect(NO_RESPLIT_KEYS).toHaveLength(12);
     expect(NO_RESPLIT_KEYS.filter((k) => /_정보관리$/.test(k) && k.startsWith('모의/'))).toEqual([
       '모의/KPC/2012.12/2_정보관리',
       '모의/KPC/2013.05/3_정보관리',

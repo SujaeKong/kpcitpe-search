@@ -13,7 +13,8 @@ import { makeProblem } from '../helpers/problem-fixture';
 
 const map = {
   기출: {
-    '87': { '1_정보관리': { id: 'kichul-87-no-resplit' }, '1_컴시응': { id: 'kichul-87-app' } },
+    '87': { '1_정보관리': { id: 'kichul-87-no-resplit' }, '1_컴시응': { id: 'kichul-87-app-no-resplit' } },
+    '88': { '1_컴시응': { id: 'kichul-88-app' } },
   },
   모의: {
     KPC: {
@@ -52,12 +53,13 @@ describe('자동 task 생성', () => {
     expect(byId('mgmt-3')).toBeUndefined();
     expect(byId('kichul-87-no-resplit')).toBeUndefined();
     expect(byId('mgmt-no-resplit')).toBeUndefined();
-    expect(specs.map((s) => s.fileId).sort()).toEqual(['app-2012', 'app-3', 'combined-2', 'kichul-87-app']);
+    expect(byId('kichul-87-app-no-resplit')).toBeUndefined();
+    expect(specs.map((s) => s.fileId).sort()).toEqual(['app-2012', 'app-3', 'combined-2', 'kichul-88-app']);
   });
 
   it('P4: SPLIT_ONLY — "모의:종목별"은 모의 종목별만, "기출"은 기출만, 빈 값은 전체', () => {
     expect(filterSpecs(specs, '모의:종목별').map((s) => s.fileId).sort()).toEqual(['app-2012', 'app-3']);
-    expect(filterSpecs(specs, '기출').map((s) => s.fileId)).toEqual(['kichul-87-app']);
+    expect(filterSpecs(specs, '기출').map((s) => s.fileId)).toEqual(['kichul-88-app']);
     expect(filterSpecs(specs, '')).toHaveLength(4);
     expect(filterSpecs(specs, undefined)).toHaveLength(4);
   });
@@ -102,13 +104,13 @@ describe('분할 결과 머지', () => {
       { ok: true, task: moui('2016.01', '3', '컴시응'), uploaded: [upload(7, 'split-7'), upload(8, 'split-8', false)] },
       { ok: false, task: moui('2012.12', '2', '컴시응'), uploaded: [upload(1, 'failed-1')] },
       { ok: true, task: moui('2012.12', '2', '정보관리'), uploaded: [upload(1, 'forbidden-1')] },
-      { ok: true, task: { sourceType: '기출', round: '87', session: '1', certScope: '컴시응' }, uploaded: [upload(2, 'kichul-2')] },
+      { ok: true, task: { sourceType: '기출', round: '88', session: '1', certScope: '컴시응' }, uploaded: [upload(2, 'kichul-2')] },
     ]);
     expect(updated).toBe(2);
     expect(target.모의.KPC['2016.01']['3_컴시응'].questions).toEqual({ '7': { id: 'split-7', name: 'split-7.pdf' } });
     expect(target.모의.KPC['2012.12']['2_컴시응']).not.toHaveProperty('questions');
     expect(target.모의.KPC['2012.12']['2_정보관리']).not.toHaveProperty('questions');
-    expect(target.기출['87']['1_컴시응'].questions).toEqual({ '2': { id: 'kichul-2', name: 'kichul-2.pdf' } });
+    expect(target.기출['88']['1_컴시응'].questions).toEqual({ '2': { id: 'kichul-2', name: 'kichul-2.pdf' } });
   });
 
   it('P11: 모의 -N 회차 task는 정확한 회차 키가 없으면 base 회차 entry에 머지', () => {

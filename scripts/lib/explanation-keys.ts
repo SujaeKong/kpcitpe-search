@@ -60,6 +60,8 @@ export function sameMappingContent(a: unknown, b: unknown): boolean {
  */
 export const NO_RESPLIT_KEYS: readonly string[] = [
   '기출/87/1_정보관리',
+  // 2026-09-15 제목 정렬 가드로 발견: PDF 문항 순서가 엑셀과 달라(엑셀 14번 Haptics = PDF 3번) 4~14번이 어긋남
+  '기출/87/1_컴시응',
   '기출/93/3_정보관리',
   '기출/93/4_정보관리',
   '기출/105/4_컴시응',
