@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { redactPageText } from '../../scripts/lib/split-redact';
-import { checkSplitGuards, detectQuestionRangesWithSignal, SIGNALS, type QuestionRange } from '../../scripts/split-pdfs';
+import { checkSplitGuards, detectQuestionRangesWithSignal, fillMissingRangesByTitle, SIGNALS, type QuestionRange } from '../../scripts/split-pdfs';
 
 const signal = (name: string) => {
   const s = SIGNALS.find((x) => x.name === name);
@@ -103,6 +103,54 @@ describe('안전 가드 (checkSplitGuards)', () => {
     expect(checkSplitGuards(ranges(1, 2, 3), shifted, titles)).toMatchObject({ ok: false, reason: 'alignment' });
     expect(checkSplitGuards(ranges(1, 2, 3), shifted, titles, { alignment: false })).toEqual({ ok: true });
     expect(checkSplitGuards(ranges(1, 2, 3), ['해시 함수', '쿠키 보안', '캐시 전략'], titles)).toEqual({ ok: true });
+  });
+});
+
+describe('놓친 문항 제목 보강 (fillMissingRangesByTitle)', () => {
+  // 140회 기출 정보관리 4교시 형태 — 1·3번은 "문 제 N.", 2번만 번호만("2. 쿠키 보안…")
+  const titles = ['해시 함수의 충돌 저항성', '쿠키 보안 속성 설정', '캐시 무효화 전략'];
+  const pages = [
+    '표지',
+    '시험문제 1. 해시 함수의 충돌 저항성 2. 쿠키 보안 속성 설정 3. 캐시 무효화 전략',
+    '문 제 1. 해시 함수의 충돌 저항성에 대하여 설명하시오',
+    '2. 해시 함수의 내부 구조 상세',
+    '2. 쿠키 보안 속성 설정에 대하여 설명하시오',
+    '문 제 3. 캐시 무효화 전략에 대하여 설명하시오',
+  ];
+  const detected: QuestionRange[] = [
+    { questionNumber: 1, startPage: 3, endPage: 5 },
+    { questionNumber: 3, startPage: 6, endPage: 6 },
+  ];
+
+  it('V14: 번호만 있는 제목도 제목 토큰이 맞으면 보강하고 구간을 다시 계산', () => {
+    expect(fillMissingRangesByTitle(detected, pages, titles)).toEqual([
+      { questionNumber: 1, startPage: 3, endPage: 4 },
+      { questionNumber: 2, startPage: 5, endPage: 5 },
+      { questionNumber: 3, startPage: 6, endPage: 6 },
+    ]);
+  });
+
+  it('V15: 문항을 모두 나열한 시험문제 페이지·본문 소제목은 보강 대상이 아님', () => {
+    // 2페이지(시험문제 목록)는 번호·제목이 다 맞지만 다른 문항 제목도 맞아 제외,
+    // 4페이지("2. 해시 함수의 내부 구조")는 번호만 맞고 2번 제목과 안 맞아 제외 → 5페이지 채택
+    expect(fillMissingRangesByTitle(detected, pages, titles)[1].startPage).toBe(5);
+    // 제목이 아예 안 맞으면 보강 없음 (원본 그대로)
+    const noMatch = ['표지', '문 제 1. 해시 함수의 충돌 저항성', '2. 무관한 내용', '문 제 3. 캐시 무효화 전략'];
+    const only13: QuestionRange[] = [
+      { questionNumber: 1, startPage: 2, endPage: 3 },
+      { questionNumber: 3, startPage: 4, endPage: 4 },
+    ];
+    expect(fillMissingRangesByTitle(only13, noMatch, titles)).toEqual(only13);
+  });
+
+  it('V16: 이웃 문항 시작 페이지 바깥의 후보는 채택하지 않음', () => {
+    // 2번 후보가 3번 시작(4p)보다 뒤(5p)에만 있으면 보강 불가
+    const late = ['표지', '문 제 1. 해시 함수의 충돌 저항성', '내용', '문 제 3. 캐시 무효화 전략', '2. 쿠키 보안 속성 설정'];
+    const only13: QuestionRange[] = [
+      { questionNumber: 1, startPage: 2, endPage: 3 },
+      { questionNumber: 3, startPage: 4, endPage: 5 },
+    ];
+    expect(fillMissingRangesByTitle(only13, late, titles)).toEqual(only13);
   });
 });
 

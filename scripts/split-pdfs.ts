@@ -417,6 +417,67 @@ export function checkTitleAlignment(rangeTexts: string[], titles: string[]): { b
   return { bestOffset, scores };
 }
 
+/**
+ * 시그널이 놓친 문항의 시작 페이지를 문항 제목으로 보강한다.
+ *
+ * 한 해설집 안에서도 문항 제목 서식이 섞이는 경우가 있다 — 140회 기출 정보관리 4교시는
+ * 1·2·4·6번만 "문 제 N."이고 3·5번은 "3. 소프트웨어 형상관리…"처럼 번호만 있어
+ * munje 시그널이 4개만 잡고 count 가드에서 통합본으로 폴백됐다.
+ *
+ * 번호만으로는 본문 소제목("3. 데이터가치 평가에 활용되는…")과 구분되지 않으므로
+ * **번호와 제목이 동시에 맞을 때만** 채택한다:
+ *   1) 페이지 머리(앞 800자, 시그널과 같은 범위)에 `N.`이 한글·숫자에 붙지 않은 위치로 등장
+ *   2) 그 머리 부분이 N번 문항 제목 토큰의 60% 이상을 포함
+ *   3) **다른 문항 제목은 같은 기준으로 맞지 않음** — 6문항을 모두 나열한 시험문제 페이지가
+ *      아무 번호에나 걸리는 오검출 차단 (140회 4교시 해설집에 시험문제 페이지가 들어 있음)
+ *   4) 이미 검출된 (N-1)번 시작 페이지보다 뒤, (N+1)번 시작 페이지보다 앞
+ * 채택 후 시작 페이지 순서로 구간(endPage)을 다시 계산한다. 보강해도 개수가 안 맞으면
+ * 기존 가드가 그대로 통합본 폴백으로 처리한다.
+ */
+export function fillMissingRangesByTitle(
+  ranges: QuestionRange[],
+  pageTexts: string[],
+  titles: string[],
+): QuestionRange[] {
+  const found = new Map(ranges.map((r) => [r.questionNumber, r.startPage]));
+  const usedPages = new Set(ranges.map((r) => r.startPage));
+  const added: QuestionRange[] = [];
+  const allTokens = titles.map(titleTokens);
+  const matches = (flat: string, tokens: string[]) =>
+    tokens.length >= 2 && tokens.filter((t) => flat.includes(t)).length / tokens.length >= 0.6;
+
+  for (let n = 1; n <= titles.length; n++) {
+    if (found.has(n)) continue;
+    const tokens = allTokens[n - 1] ?? [];
+    if (tokens.length < 2) continue;
+    const numRe = new RegExp(`(?:^|[^0-9가-힣])${String(n).split('').join('\\s*')}\\s*\\.`);
+    const after = found.get(n - 1) ?? 0;
+    const before = found.get(n + 1) ?? pageTexts.length + 1;
+
+    for (let i = 0; i < pageTexts.length; i++) {
+      const page = i + 1;
+      if (usedPages.has(page) || page <= after || page >= before) continue;
+      const head = pageTexts[i].slice(0, 800);
+      if (!numRe.test(head)) continue;
+      const flat = head.replace(/\s+/g, '').toLowerCase();
+      if (!matches(flat, tokens)) continue;
+      // 문항 목록 페이지(여러 문항 제목이 한 페이지에) 제외
+      if (allTokens.some((other, idx) => idx !== n - 1 && matches(flat, other))) continue;
+      added.push({ questionNumber: n, startPage: page, endPage: 0 });
+      found.set(n, page);
+      usedPages.add(page);
+      break;
+    }
+  }
+  if (added.length === 0) return ranges;
+
+  const merged = [...ranges, ...added].sort((a, b) => a.startPage - b.startPage);
+  return merged.map((r, i) => ({
+    ...r,
+    endPage: i + 1 < merged.length ? merged[i + 1].startPage - 1 : pageTexts.length,
+  }));
+}
+
 export type SplitGuardResult =
   | { ok: true }
   | { ok: false; reason: 'none' | 'count' | 'sequence' | 'alignment'; message: string };
@@ -552,6 +613,17 @@ async function processSplitTask(
     const sortedProblems = [...task.problems]
       .filter((p) => typeof p.questionNumber === 'number')
       .sort((a, b) => (a.questionNumber as number) - (b.questionNumber as number));
+    // 시그널이 놓친 문항은 번호+제목이 동시에 맞는 페이지로만 보강 (서식이 섞인 해설집 대응)
+    if (detectedRanges.length > 0 && detectedRanges.length < sortedProblems.length) {
+      const filled = fillMissingRangesByTitle(detectedRanges, pageTexts, sortedProblems.map((p) => p.title));
+      if (filled.length > detectedRanges.length) {
+        const addedNums = filled
+          .filter((r) => !detectedRanges.some((d) => d.questionNumber === r.questionNumber))
+          .map((r) => `${r.questionNumber}번:p${r.startPage}`);
+        console.log(`   제목으로 보강: ${addedNums.join(', ')}`);
+        detectedRanges = filled;
+      }
+    }
     const guard = checkSplitGuards(detectedRanges, pageTexts, sortedProblems.map((p) => p.title));
     if (!guard.ok) {
       errors.push(guard.message);
