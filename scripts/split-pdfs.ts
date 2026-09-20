@@ -614,13 +614,13 @@ async function processSplitTask(
       .filter((p) => typeof p.questionNumber === 'number')
       .sort((a, b) => (a.questionNumber as number) - (b.questionNumber as number));
     // 시그널이 놓친 문항은 번호+제목이 동시에 맞는 페이지로만 보강 (서식이 섞인 해설집 대응)
+    const filledNums = new Set<number>();
     if (detectedRanges.length > 0 && detectedRanges.length < sortedProblems.length) {
       const filled = fillMissingRangesByTitle(detectedRanges, pageTexts, sortedProblems.map((p) => p.title));
       if (filled.length > detectedRanges.length) {
-        const addedNums = filled
-          .filter((r) => !detectedRanges.some((d) => d.questionNumber === r.questionNumber))
-          .map((r) => `${r.questionNumber}번:p${r.startPage}`);
-        console.log(`   제목으로 보강: ${addedNums.join(', ')}`);
+        const added = filled.filter((r) => !detectedRanges.some((d) => d.questionNumber === r.questionNumber));
+        for (const r of added) filledNums.add(r.questionNumber);
+        console.log(`   제목으로 보강: ${added.map((r) => `${r.questionNumber}번:p${r.startPage}`).join(', ')}`);
         detectedRanges = filled;
       }
     }
@@ -677,18 +677,31 @@ async function processSplitTask(
         console.log(`   ✔ ${name} → ${uploadedFile.id} (p${range.startPage}-${range.endPage}, ${pageBuf.length} bytes)`);
       }
 
-      // 자체검증 — 업로드된 분할 PDF에 시그널별 마커가 PDF 내부 번호(range.questionNumber)로 있는지 확인
+      // 자체검증 — 업로드된 분할 PDF에 시그널별 마커가 PDF 내부 번호(range.questionNumber)로 있는지 확인.
+      // 제목으로 보강한 문항은 그 마커가 애초에 없으므로(보강한 이유), 뽑을 때와 같은 기준인
+      // 문항 제목 토큰 일치로 검증한다.
       let validated = false;
       let validationNote: string | undefined;
       try {
         const verifyBuf = await downloadPdf(writeDrive, uploadedFile.id);
         const verifyTexts = await extractPageTexts(verifyBuf);
         const fullText = verifyTexts.join(' ');
-        const sigCfg = SIGNALS.find((s) => s.name === detectionSignal);
-        if (sigCfg && sigCfg.validateSplit(fullText, range.questionNumber)) {
-          validated = true;
+        if (filledNums.has(range.questionNumber)) {
+          const tokens = titleTokens(problem.title);
+          const flat = fullText.replace(/\s+/g, '').toLowerCase();
+          const hit = tokens.filter((t) => flat.includes(t)).length;
+          if (tokens.length >= 2 && hit / tokens.length >= 0.6) {
+            validated = true;
+          } else {
+            validationNote = `제목 보강 문항 ${range.questionNumber}번: 분할 PDF에 제목 토큰 ${hit}/${tokens.length}만 있음`;
+          }
         } else {
-          validationNote = `${detectionSignal} 시그널 마커(PDF내부 ${range.questionNumber}번)가 분할 PDF에 없음`;
+          const sigCfg = SIGNALS.find((s) => s.name === detectionSignal);
+          if (sigCfg && sigCfg.validateSplit(fullText, range.questionNumber)) {
+            validated = true;
+          } else {
+            validationNote = `${detectionSignal} 시그널 마커(PDF내부 ${range.questionNumber}번)가 분할 PDF에 없음`;
+          }
         }
       } catch (verErr) {
         validationNote = `검증 실패: ${(verErr as Error).message}`;
