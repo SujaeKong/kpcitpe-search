@@ -737,6 +737,8 @@ export interface TestSpec {
   session: string;
   sessionPart?: string | null;
   problemFilter: (p: Problem) => boolean;
+  /** 매핑 키 경로(`기출/140/4_정보관리`). 자동 생성 task만 가짐 — SPLIT_KEYS 필터용 */
+  mappingKey?: string;
 }
 
 const TEST_SPECS: TestSpec[] = [
@@ -1012,9 +1014,10 @@ export function generateAllSpecsFromMap(map: any): TestSpec[] {
       for (const [key, entry] of Object.entries(sessions as Record<string, any>)) {
         if (!entry?.id) continue;
         if (entry.questions && Object.keys(entry.questions).length > 0) continue;
-        if (noResplit.has([...prefix, round, key].join('/'))) continue;
+        const mappingKey = [...prefix, round, key].join('/');
+        if (noResplit.has(mappingKey)) continue;
         const spec = specFromMappingEntry(sourceType, round, key, entry);
-        if (spec) specs.push(spec);
+        if (spec) specs.push({ ...spec, mappingKey });
       }
     }
   }
@@ -1085,6 +1088,17 @@ export function mergeSplitResultFile(resultPath: string, mappingPath: string): n
  *  - '모의:종목별' → 모의 종목별 해설집만
  *  - '모의:회차=2011.07,2023.12' → 해당 회차만
  */
+/**
+ * 매핑 키 경로(콤마 구분)로 task를 좁힌다 — sync가 "이번에 새로 생긴 키"만 넘겨
+ * 신규 회차를 자동 분할할 때 사용(옛 회차 재분할 방지). 빈 값이면 그대로 통과.
+ * 자동 생성 task(mappingKey 있음)만 대상이며, 키가 하나도 안 맞으면 빈 목록.
+ */
+export function filterSpecsByKeys(specs: TestSpec[], keys: string | undefined): TestSpec[] {
+  const wanted = new Set((keys ?? '').split(',').map((k) => k.trim()).filter(Boolean));
+  if (wanted.size === 0) return specs;
+  return specs.filter((s) => s.mappingKey && wanted.has(s.mappingKey));
+}
+
 export function filterSpecs(specs: TestSpec[], only: string | undefined): TestSpec[] {
   if (!only) return specs;
   const [sourceType, scope = ''] = only.split(':');
@@ -1112,10 +1126,13 @@ async function main() {
   const mappingPath = path.join(ROOT, 'data', 'mappings', 'explanation-files.json');
   const mappingForSpecs = fs.existsSync(mappingPath) ? JSON.parse(fs.readFileSync(mappingPath, 'utf8')) : {};
   const mode = process.env.SPLIT_MODE ?? 'test';
-  let specsToRun: TestSpec[] = filterSpecs(
-    mode === 'all' ? generateAllSpecsFromMap(mappingForSpecs) : TEST_SPECS,
-    process.env.SPLIT_ONLY,
+  let specsToRun: TestSpec[] = filterSpecsByKeys(
+    filterSpecs(mode === 'all' ? generateAllSpecsFromMap(mappingForSpecs) : TEST_SPECS, process.env.SPLIT_ONLY),
+    process.env.SPLIT_KEYS,
   );
+  if (process.env.SPLIT_KEYS) {
+    console.log(`키 필터: ${process.env.SPLIT_KEYS}`);
+  }
 
   // BATCH_OFFSET / BATCH_LIMIT 적용 (chunking)
   const offset = parseInt(process.env.BATCH_OFFSET ?? '0', 10);

@@ -31,6 +31,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # sync 전 매핑을 보관 — 이번 sync로 새로 생긴 키(신규 회차·교체된 해설지)를
+      # 뒤에서 계산해 split-pdfs에 넘긴다 (옛 회차까지 재분할하지 않기 위해)
+      - name: Snapshot mapping before sync
+        run: cp data/mappings/explanation-files.json "$RUNNER_TEMP/mapping-before.json"
+
       - name: Sync mappings from Drive
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
@@ -78,9 +83,20 @@ jobs:
         if: steps.commit.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        # mode=test 명시: 기본값 'all'은 questions 없는 옛 회차 548개를 전부 재분할해
-        # 통합본 폴백한 정렬오류 회차들이 다시 어긋난 분할로 되살아남. TEST_SPECS만 처리.
-        run: gh workflow run split-pdfs.yml --ref main -f overwrite=false -f mode=test
+        # 이번 sync로 새로 생긴(또는 해설지 파일이 교체된) 매핑 키만 mode=all + keys로 분할.
+        # mode=all을 키 제한 없이 돌리면 questions 없는 옛 회차 548개가 전부 재분할돼
+        # 통합본으로 폴백해 둔 정렬오류 회차들이 다시 어긋난 분할로 되살아난다(PROJECT.md §10).
+        # 신규 키가 없으면(파일명·회차만 바뀐 sync) 기존처럼 TEST_SPECS 회귀 분할만 돌린다.
+        run: |
+          set -euo pipefail
+          keys=$(npx -s tsx scripts/print-new-mapping-keys.ts "$RUNNER_TEMP/mapping-before.json")
+          if [ -n "$keys" ]; then
+            echo "신규 매핑 키 $(echo "$keys" | tr ',' '\n' | wc -l)개 → mode=all 분할: $keys"
+            gh workflow run split-pdfs.yml --ref main -f overwrite=false -f mode=all -f keys="$keys"
+          else
+            echo "신규 매핑 키 없음 → TEST_SPECS 회귀 분할"
+            gh workflow run split-pdfs.yml --ref main -f overwrite=false -f mode=test
+          fi
 
       - name: Trigger deploy (if changed)
         # GITHUB_TOKEN으로 push된 커밋은 deploy-cloudflare.yml의 push 트리거를
