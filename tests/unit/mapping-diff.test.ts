@@ -1,7 +1,7 @@
 /**
  * 신규 회차 자동 분할 — sync 전후 매핑 비교로 "이번에 분할할 키"를 고르고, split이 그 키로만 task를 만드는지.
  */
-import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { flattenMapping, newMappingKeys } from '../../scripts/lib/mapping-diff';
 import { filterSpecsByKeys, generateAllSpecsFromMap, type TestSpec } from '../../scripts/split-pdfs';
@@ -58,11 +58,12 @@ describe('sync 전후 매핑 비교 (newMappingKeys)', () => {
     expect(filterSpecsByKeys(specs, '기출/999/1_정보관리')).toHaveLength(0);
   });
 
-  it('Y5: 실제 140회 sync 커밋(4507d2b)에서 기출 140 8개 키가 그대로 나온다', () => {
-    const at = (rev: string) =>
-      JSON.parse(execFileSync('git', ['show', `${rev}:data/mappings/explanation-files.json`], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 }));
-    // 4507d2b = 140회 해설지 8개 업로드 직후의 auto-sync 커밋
-    expect(newMappingKeys(at('4507d2b~1'), at('4507d2b'))).toEqual([
+  it('Y5: 실제 140회 sync 전후 매핑(픽스처)에서 기출 140 8개 키가 그대로 나온다', () => {
+    // 2026-09-20 140회 해설지 8개 업로드 직후 auto-sync 커밋(4507d2b) 전후에서 추린 조각.
+    // CI 체크아웃은 shallow(fetch-depth 1)라 git 이력을 직접 읽으면 안 된다.
+    const at = (name: string) =>
+      JSON.parse(readFileSync(new URL(`../fixtures/mapping-diff/${name}.json`, import.meta.url), 'utf8'));
+    expect(newMappingKeys(at('before-140-sync'), at('after-140-sync'))).toEqual([
       '기출/140/1_정보관리',
       '기출/140/1_컴시응',
       '기출/140/2_정보관리',
