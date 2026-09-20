@@ -5788,36 +5788,6 @@
           }
         }
       },
-      "3_컴시응": {
-        "id": "1eknzC6e6P05B6xS4HU-ZQ1zJ0aNp4Q1W",
-        "name": "140회_기출풀이_컴시응 3교시 해설지_20260919_v1.0.pdf",
-        "questions": {
-          "1": {
-            "id": "1w60SHJuZQ07Vd_zwEhst6sCz-Mkej-qm",
-            "name": "기출_140_컴시응_3_01_CXL.pdf"
-          },
-          "2": {
-            "id": "1HzGssE6HDq3ygCmqmlA0ydOOymbLOite",
-            "name": "기출_140_컴시응_3_02_MESI.pdf"
-          },
-          "3": {
-            "id": "1J5aTCt8aBqGf-rrodpJn1-t6Xp1JM6R4",
-            "name": "기출_140_컴시응_3_03_MSA.pdf"
-          },
-          "4": {
-            "id": "1eUd50uq71Kbn7IqAyo655CMZD-0KpAun",
-            "name": "기출_140_컴시응_3_04_토큰_버킷Token_Bucket.pdf"
-          },
-          "5": {
-            "id": "1R4nN41dTL0-QdjfsW7G_G7bKIjQ6DF5Y",
-            "name": "기출_140_컴시응_3_05_가용성Availability_Five_Nines99.pdf"
-          },
-          "6": {
-            "id": "127EYrhsUH649bJUNFcmgeySCnffYc4Ya",
-            "name": "기출_140_컴시응_3_06_AIDC.pdf"
-          }
-        }
-      },
       "2_컴시응": {
         "id": "1kkfsmYlxJWS_3t2PdSZy_vMhkih9zUZJ",
         "name": "140회_기출풀이_컴시응 2교시 해설지_20260919_v1.0.pdf",
