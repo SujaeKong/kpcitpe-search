@@ -13,6 +13,7 @@ on:
 permissions:
   contents: read
   deployments: write
+  actions: write # 신규 회차 분할(split-pdfs) 트리거
 
 concurrency:
   group: cloudflare-pages
@@ -52,6 +53,13 @@ jobs:
           COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           ALLOW_LINK_DROP_INPUT: ${{ inputs.allow_link_drop }}
         run: npm run check:links
+
+      # 해설지 PDF를 엑셀보다 먼저 올린 회차 구제: 운영엔 문항이 없었는데 이번 빌드에서
+      # 생긴, 아직 분할본이 없는 매핑 키를 찾아 둔다(배포 성공 후 split-pdfs에 넘김).
+      # 운영 데이터와 비교해야 하므로 배포 **전에** 계산한다.
+      - name: Detect rounds needing split
+        id: pending
+        run: echo "keys=$(npx -s tsx scripts/detect-pending-splits.ts)" >> "$GITHUB_OUTPUT"
 
       # /api/explanation 프록시가 Drive 파일(통합본+분할본)을 읽을 때 쓰는 서비스계정
       # 자격증명을 배포 직전에 Pages 런타임 시크릿으로 주입 (idempotent). 배포보다 먼저
@@ -95,3 +103,15 @@ jobs:
       # 운영 캐시 헤더·번들 반영·데이터(방금 빌드한 data/problems.json과 회차별 비교)·API 게이트 점검
       - name: Live tests
         run: npm run test:live
+
+      # 엑셀이 늦게 올라와 분할을 못 했던 회차를 이제 분할 (배포가 끝난 뒤에 실행 —
+      # split이 매핑을 커밋하면 그 커밋이 다음 배포를 부른다). 분할이 끝나면 해당 키에
+      # questions가 생겨 다음 배포에서는 대상에서 빠지므로 반복되지 않는다.
+      - name: Trigger split for newly added rounds
+        if: steps.pending.outputs.keys != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KEYS: ${{ steps.pending.outputs.keys }}
+        run: |
+          echo "신규 문항이 생긴 미분할 키 → 분할 트리거: $KEYS"
+          gh workflow run split-pdfs.yml --ref main -f overwrite=false -f mode=all -f keys="$KEYS"

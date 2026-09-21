@@ -219,6 +219,8 @@ deploy-cloudflare (build:data + 사이트 빌드 + Pages 배포)
 
 **해설지를 교체 업로드할 때**: 같은 키라도 Drive 파일 id가 바뀌면 신규 키로 잡혀 다시 분할된다. 단, 기존 분할본은 `OVERWRITE=0`이라 그대로 남으므로 내용이 바뀌었으면 `Split PDFs`를 `overwrite=true`로 한 번 돌려야 한다.
 
+**엑셀·PDF 순서는 상관없다** (2026-09-22 보강, `scripts/lib/pending-splits.ts`): split은 problems.json에 문항이 없으면 "매칭 없음, 스킵"으로 끝난다. 해설지를 엑셀보다 먼저 올리면 sync가 신규 키로 잡아 split을 돌려도 아무것도 못 하고, 나중에 엑셀을 올려도 파일 id가 그대로라 sync에겐 더 이상 신규 키가 아니라 통합본 연결로 굳었다. 그래서 배포가 **운영 problems.json과 새 빌드를 비교해 "운영엔 문항이 없었는데 이번에 생긴" 미분할 키**를 찾아(배포 전 계산) 배포 성공 후 split에 넘긴다. 운영에 이미 문항이 있던 키는 제외되므로 통합본 폴백해 둔 옛 회차는 건드리지 않는다 — 실측으로 미분할 키 694개 중 672개가 이 조건에서 걸러진다. 분할이 끝나면 questions가 생겨 다음 배포에서 대상에서 빠지므로 반복되지 않는다.
+
 **B. 통합 엑셀 (검색 데이터)** — GitHub 웹에서:
 1. https://github.com/SujaeKong/kpcitpe-search → `data/source/kpc/`
 2. **Add file → Upload files** → 새 엑셀 드래그 (파일명 `KPC_기술사문제검색_v{YYMMDD}.xls`)
