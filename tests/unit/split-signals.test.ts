@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { redactPageText } from '../../scripts/lib/split-redact';
-import { checkSplitGuards, detectQuestionRangesWithSignal, fillMissingRangesByTitle, SIGNALS, type QuestionRange } from '../../scripts/split-pdfs';
+import { checkSplitGuards, detectQuestionRangesWithSignal, detectRanges, fillMissingRangesByTitle, SIGNALS, type QuestionRange } from '../../scripts/split-pdfs';
 
 const signal = (name: string) => {
   const s = SIGNALS.find((x) => x.name === name);
@@ -141,6 +141,39 @@ describe('놓친 문항 제목 보강 (fillMissingRangesByTitle)', () => {
       { questionNumber: 3, startPage: 4, endPage: 4 },
     ];
     expect(fillMissingRangesByTitle(only13, noMatch, titles)).toEqual(only13);
+  });
+
+  // 140회 기출 정보관리 4교시와 같은 구성: 시그널이 3건 이상 잡히고(앵커 성립) 일부만 번호 서식
+  const titles4 = [...titles, '세션 고정 방어'];
+  const pages4 = [
+    '표지',
+    '문 제 1. 해시 함수의 충돌 저항성에 대하여 설명하시오',
+    '2. 쿠키 보안 속성 설정에 대하여 설명하시오',
+    '문 제 3. 캐시 무효화 전략에 대하여 설명하시오',
+    '문 제 4. 세션 고정 방어에 대하여 설명하시오',
+  ];
+
+  it('V17: detectRanges가 splitter·audit 공통 출구 — 보강 결과와 보강 번호를 함께 돌려준다', () => {
+    const filled = detectRanges(pages4, titles4);
+    expect(filled.signal).toBe('munje');
+    expect(filled.ranges.map((r) => r.questionNumber)).toEqual([1, 2, 3, 4]);
+    expect([...filled.filledNums]).toEqual([2]);
+    expect(checkSplitGuards(filled.ranges, pages4, titles4)).toEqual({ ok: true });
+
+    // 보강할 게 없으면 시그널 결과 그대로, filledNums 빈 집합
+    const complete = pages4.map((t) => t.replace(/^2\. /, '문 제 2. '));
+    const plain = detectRanges(complete, titles4);
+    expect(plain.ranges.map((r) => r.questionNumber)).toEqual([1, 2, 3, 4]);
+    expect(plain.filledNums.size).toBe(0);
+  });
+
+  it('V18: 시그널이 3건 미만이면 검출 자체가 성립하지 않아 보강도 하지 않는다 (오검출 방지 하한)', () => {
+    // 6문항 중 "문 제 N." 서식이 2개뿐이면 signal=none·ranges=[] → 제목만으로 채우지 않고 통합본 폴백
+    const twoMarkers = ['표지', '문 제 1. 해시 함수의 충돌 저항성', '2. 쿠키 보안 속성 설정', '문 제 3. 캐시 무효화 전략'];
+    const res = detectRanges(twoMarkers, titles);
+    expect({ signal: res.signal, ranges: res.ranges.length, filled: res.filledNums.size }).toEqual({ signal: 'none', ranges: 0, filled: 0 });
+    // 앵커가 없으면 제목만 믿고 구간을 만들지 않는다 — fill 함수를 직접 부를 때와의 차이
+    expect(fillMissingRangesByTitle([], twoMarkers, titles)).toEqual([]);
   });
 
   it('V16: 이웃 문항 시작 페이지 바깥의 후보는 채택하지 않음', () => {

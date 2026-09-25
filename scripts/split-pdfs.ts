@@ -439,6 +439,10 @@ export function fillMissingRangesByTitle(
   pageTexts: string[],
   titles: string[],
 ): QuestionRange[] {
+  // 앵커(시그널로 잡힌 구간)가 없으면 보강하지 않는다 — 제목만 믿고 만든 구간은
+  // 문항↔내용이 어긋날 위험이 크고, 그 경우는 통합본 폴백이 맞다.
+  if (ranges.length === 0) return ranges;
+
   const found = new Map(ranges.map((r) => [r.questionNumber, r.startPage]));
   const usedPages = new Set(ranges.map((r) => r.startPage));
   const added: QuestionRange[] = [];
@@ -476,6 +480,31 @@ export function fillMissingRangesByTitle(
     ...r,
     endPage: i + 1 < merged.length ? merged[i + 1].startPage - 1 : pageTexts.length,
   }));
+}
+
+/**
+ * 분할 구간 판정의 **단일 출구** — 시그널 검출 + 제목 보강.
+ * splitter(실제 분할)와 audit(정렬 감사)가 같은 기준을 보도록 한 곳에 모았다.
+ * (보강 로직을 splitter에만 넣었을 때 audit이 140회 4교시를 '검출 4 ≠ 6'으로 오탐했다.)
+ *
+ * 보강은 시그널이 이미 ≥3 문항을 잡아 **앵커가 성립한 경우만** 일어난다
+ * (detectQuestionRangesWithSignal의 하한). 서식이 2개 이하로만 맞는 PDF는 제목만 믿고
+ * 구간을 만들지 않고 통합본 폴백 — 근거가 약한 분할로 문항↔내용이 어긋나는 쪽이 더 위험하다.
+ */
+export function detectRanges(
+  pageTexts: string[],
+  titles: string[],
+): { ranges: QuestionRange[]; signal: string; filledNums: Set<number> } {
+  const { ranges, signal } = detectQuestionRangesWithSignal(pageTexts);
+  const filledNums = new Set<number>();
+  if (ranges.length === 0 || ranges.length >= titles.length) return { ranges, signal, filledNums };
+
+  const filled = fillMissingRangesByTitle(ranges, pageTexts, titles);
+  if (filled.length === ranges.length) return { ranges, signal, filledNums };
+  for (const r of filled) {
+    if (!ranges.some((d) => d.questionNumber === r.questionNumber)) filledNums.add(r.questionNumber);
+  }
+  return { ranges: filled, signal, filledNums };
 }
 
 export type SplitGuardResult =
@@ -599,12 +628,6 @@ async function processSplitTask(
     pageCount = pageTexts.length;
     console.log(`   페이지: ${pageCount}`);
 
-    const detection = detectQuestionRangesWithSignal(pageTexts);
-    detectedRanges = detection.ranges;
-    detectionSignal = detection.signal;
-    console.log(`   시그널: ${detectionSignal}`);
-    console.log(`   감지된 문항: ${detectedRanges.length}개 — ${detectedRanges.map((r) => `${r.questionNumber}번:p${r.startPage}-${r.endPage}`).join(', ')}`);
-
     // 안전 가드를 Drive 작업(폴더 생성·OVERWRITE 휴지통 이동)보다 먼저 검사 —
     // 가드에서 포기할 분할인데 기존 분할본부터 휴지통으로 보내 매핑이 끊기는 일이 없도록
     // problems와 PDF 내부 문항번호가 다른 경우(87회 등) 대응:
@@ -613,18 +636,20 @@ async function processSplitTask(
     const sortedProblems = [...task.problems]
       .filter((p) => typeof p.questionNumber === 'number')
       .sort((a, b) => (a.questionNumber as number) - (b.questionNumber as number));
-    // 시그널이 놓친 문항은 번호+제목이 동시에 맞는 페이지로만 보강 (서식이 섞인 해설집 대응)
-    const filledNums = new Set<number>();
-    if (detectedRanges.length > 0 && detectedRanges.length < sortedProblems.length) {
-      const filled = fillMissingRangesByTitle(detectedRanges, pageTexts, sortedProblems.map((p) => p.title));
-      if (filled.length > detectedRanges.length) {
-        const added = filled.filter((r) => !detectedRanges.some((d) => d.questionNumber === r.questionNumber));
-        for (const r of added) filledNums.add(r.questionNumber);
-        console.log(`   제목으로 보강: ${added.map((r) => `${r.questionNumber}번:p${r.startPage}`).join(', ')}`);
-        detectedRanges = filled;
-      }
+    const titles = sortedProblems.map((p) => p.title);
+
+    const detection = detectRanges(pageTexts, titles);
+    detectedRanges = detection.ranges;
+    detectionSignal = detection.signal;
+    const filledNums = detection.filledNums;
+    console.log(`   시그널: ${detectionSignal}`);
+    console.log(`   감지된 문항: ${detectedRanges.length}개 — ${detectedRanges.map((r) => `${r.questionNumber}번:p${r.startPage}-${r.endPage}`).join(', ')}`);
+    if (filledNums.size > 0) {
+      const added = detectedRanges.filter((r) => filledNums.has(r.questionNumber));
+      console.log(`   제목으로 보강: ${added.map((r) => `${r.questionNumber}번:p${r.startPage}`).join(', ')}`);
     }
-    const guard = checkSplitGuards(detectedRanges, pageTexts, sortedProblems.map((p) => p.title));
+
+    const guard = checkSplitGuards(detectedRanges, pageTexts, titles);
     if (!guard.ok) {
       errors.push(guard.message);
       return { task, ok: false, uploaded, errors, detectedRanges, detectionSignal, pageCount };

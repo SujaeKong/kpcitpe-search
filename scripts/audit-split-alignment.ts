@@ -15,7 +15,7 @@ import { NO_RESPLIT_KEYS } from './lib/explanation-keys';
 import {
   checkSplitGuards,
   checkTitleAlignment,
-  detectQuestionRangesWithSignal,
+  detectRanges,
   downloadPdf,
   extractPageTexts,
   makeReadDrive,
@@ -75,7 +75,9 @@ async function main() {
         .map((p: any) => p.title as string);
       try {
         const pages = await extractPageTexts(await downloadPdf(drive, t.entry.id));
-        const { signal, ranges } = detectQuestionRangesWithSignal(pages);
+        // splitter와 같은 판정 함수를 써야 한다 — 제목 보강으로 분할된 항목(140회 4교시 정보관리)을
+        // 시그널만으로 다시 재면 '검출 4 ≠ 문항 6'으로 오탐한다.
+        const { signal, ranges, filledNums } = detectRanges(pages, titles);
         const guard = checkSplitGuards(ranges, pages, titles);
         const byPage = [...ranges].sort((a, b) => a.startPage - b.startPage);
         const row: AuditRow = {
@@ -91,7 +93,7 @@ async function main() {
             ranges.length === titles.length ? checkTitleAlignment(byPage.map((r) => pages[r.startPage - 1] ?? ''), titles).scores : undefined,
         };
         rows.push(row);
-        console.log(`${row.guard === 'ok' ? '✔' : '✖'} ${row.key}: ${row.guard} (${signal} 검출 ${ranges.length}/문항 ${titles.length}/분할 ${row.splitCount})${row.alignmentScores ? ` 정렬점수 ${JSON.stringify(row.alignmentScores)}` : ''}`);
+        console.log(`${row.guard === 'ok' ? '✔' : '✖'} ${row.key}: ${row.guard} (${signal} 검출 ${ranges.length}${filledNums.size > 0 ? `(제목보강 ${filledNums.size})` : ''}/문항 ${titles.length}/분할 ${row.splitCount})${row.alignmentScores ? ` 정렬점수 ${JSON.stringify(row.alignmentScores)}` : ''}`);
       } catch (err) {
         rows.push({ key: t.keyPath, fileName: t.entry.name, signal: '-', detected: 0, problemCount: titles.length, splitCount: Object.keys(t.entry.questions).length, guard: 'error', message: (err as Error).message });
         console.log(`⚠ ${t.keyPath}: ${(err as Error).message}`);
