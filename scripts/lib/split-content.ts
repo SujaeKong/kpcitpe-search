@@ -44,12 +44,17 @@ export function titleScore(text: string, title: string): number {
 }
 
 /**
- * 분할본 텍스트가 expectedIndex 문항의 것인지 판정.
+ * 분할본 텍스트가 expected 문항의 것인지 판정.
  * 다른 문항이 뚜렷하게(+0.2 이상) 더 맞으면 mismatch, 어느 쪽도 0.5 미만이면 weak.
+ *
+ * expected에 여러 인덱스를 넘길 수 있다 — 같은 문항번호가 2개인 회차(옛 모의의 종목 선택
+ * 문항: 2011.05 1교시 12·13번이 정보관리·컴시응 각각 존재) 대응. 그중 하나와 맞으면 ok이고,
+ * 어느 문항에 붙일지는 빌드의 splitMatchesProblem이 주제어로 가린다.
  */
-export function matchSplitContent(text: string, titles: string[], expectedIndex: number): SplitContentMatch {
+export function matchSplitContent(text: string, titles: string[], expected: number | number[]): SplitContentMatch {
+  const expectedIndexes = Array.isArray(expected) ? expected : [expected];
   const scores = titles.map((t) => titleScore(text, t));
-  const expectedScore = scores[expectedIndex] ?? 0;
+  const expectedScore = Math.max(0, ...expectedIndexes.map((i) => scores[i] ?? 0));
   let bestIndex = -1;
   let bestScore = 0;
   scores.forEach((s, i) => {
@@ -60,6 +65,6 @@ export function matchSplitContent(text: string, titles: string[], expectedIndex:
   });
 
   if (expectedScore >= 0.5 && bestScore - expectedScore < 0.2) return { bestIndex, bestScore, expectedScore, verdict: 'ok' };
-  if (bestScore >= 0.5 && bestIndex !== expectedIndex) return { bestIndex, bestScore, expectedScore, verdict: 'mismatch' };
+  if (bestScore >= 0.5 && !expectedIndexes.includes(bestIndex)) return { bestIndex, bestScore, expectedScore, verdict: 'mismatch' };
   return { bestIndex, bestScore, expectedScore, verdict: 'weak' };
 }

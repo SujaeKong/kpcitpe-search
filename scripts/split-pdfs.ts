@@ -707,7 +707,10 @@ async function processSplitTask(
         const verifyBuf = await downloadPdf(writeDrive, uploadedFile.id);
         const verifyTexts = await extractPageTexts(verifyBuf);
         const fullText = verifyTexts.join(' ');
-        const m = matchSplitContent(verifyTexts.slice(0, 2).join(' '), titles, idx);
+        // 같은 문항번호가 2개인 회차(옛 모의 종목 선택 문항)는 그 전부를 후보로 —
+        // 어느 문항에 붙일지는 빌드의 splitMatchesProblem이 주제어로 가린다.
+        const dupIdxs = sortedProblems.flatMap((p, i) => (p.questionNumber === problem.questionNumber ? [i] : []));
+        const m = matchSplitContent(verifyTexts.slice(0, 2).join(' '), titles, dupIdxs.length > 1 ? dupIdxs : idx);
         if (m.verdict === 'mismatch') {
           validationNote = `내용 불일치: ${problem.questionNumber}번에 ${sortedProblems[m.bestIndex]?.questionNumber}번 내용 (점수 ${m.expectedScore.toFixed(2)} < ${m.bestScore.toFixed(2)})`;
         } else if (m.verdict === 'ok') {

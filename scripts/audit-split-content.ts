@@ -35,7 +35,8 @@ interface Target {
   fileName: string;
   titles: string[];
   numbers: number[];
-  index: number;
+  /** 연결된 문항의 후보 인덱스 (같은 번호가 2개인 회차 대응) */
+  indexes: number[];
 }
 
 function collectTargets(map: any, problems: any[], only: string): Target[] {
@@ -62,9 +63,10 @@ function collectTargets(map: any, problems: any[], only: string): Target[] {
         const numbers = matched.map((p: any) => p.questionNumber as number);
         for (const [num, q] of Object.entries(questions as Record<string, any>)) {
           const questionNumber = Number(num);
-          const index = numbers.indexOf(questionNumber);
-          if (index < 0) continue; // 엑셀에 없는 번호 — 데이터 테스트(D11) 영역
-          targets.push({ key: keyPath, questionNumber, fileId: q.id, fileName: q.name, titles, numbers, index });
+          // 같은 번호가 2개인 회차(옛 모의 종목 선택 문항)는 그 전부를 후보로 본다
+          const indexes = numbers.flatMap((n, i) => (n === questionNumber ? [i] : []));
+          if (indexes.length === 0) continue; // 엑셀에 없는 번호 — 데이터 테스트(D11) 영역
+          targets.push({ key: keyPath, questionNumber, fileId: q.id, fileName: q.name, titles, numbers, indexes });
         }
       }
     }
@@ -85,12 +87,12 @@ async function main() {
   const rows: Row[] = [];
   let done = 0;
   async function run(t: Target): Promise<void> {
-    const base: Row = { key: t.key, questionNumber: t.questionNumber, fileName: t.fileName, verdict: 'ok', expectedTitle: t.titles[t.index] };
+    const base: Row = { key: t.key, questionNumber: t.questionNumber, fileName: t.fileName, verdict: 'ok', expectedTitle: t.indexes.map((i) => t.titles[i]).join(' | ') };
     try {
       const pages = await extractPageTexts(await downloadPdf(drive, t.fileId));
       // 첫 2페이지로 판정 — 1페이지가 표지·머리말만인 경우 대비
       const text = pages.slice(0, 2).join(' ');
-      const m = matchSplitContent(text, t.titles, t.index);
+      const m = matchSplitContent(text, t.titles, t.indexes);
       rows.push({
         ...base,
         verdict: m.verdict,

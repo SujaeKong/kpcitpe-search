@@ -47,6 +47,15 @@ describe('분할본 내용 판정 (matchSplitContent)', () => {
     expect(matchSplitContent(text, near, 1).verdict).toBe('ok');
   });
 
+  it('N7: 같은 문항번호가 2개인 회차 — 둘 중 하나와 맞으면 ok (모의 2011.05 1교시 13번: Sort·VRM)', () => {
+    const dup = ['Sort 알고리즘의 종류와 성능을 비교 설명하시오.', 'VRM(Vender Relationship Management)에 대하여 설명하시오.'];
+    const vrm = '문 제 13. VRM(Vender Relationship Management)에 대하여 설명하시오.';
+    // 후보를 둘 다 주면 ok — 어느 문항에 붙일지는 빌드의 splitMatchesProblem이 가린다
+    expect(matchSplitContent(vrm, dup, [0, 1]).verdict).toBe('ok');
+    // 후보를 하나(Sort)만 주면 mismatch — 중복을 모르면 오탐한다
+    expect(matchSplitContent(vrm, dup, 0).verdict).toBe('mismatch');
+  });
+
   it('N6: 페이지 순서 ↔ 엑셀 번호 짝짓기가 한 칸씩 어긋나면 전부 mismatch로 잡힌다', () => {
     // 분할본 i가 문항 i+1의 내용을 담은 상태 (옛 off-by-one 유형)
     const texts = titles.map((t) => `문 제 N. ${t}`);
