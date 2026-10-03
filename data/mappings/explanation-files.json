@@ -807,10 +807,6 @@
             "id": "1ntwlYHcdlsgYQ4WCrouFg89AAlRrm9RB",
             "name": "기출_98_컴시응_1_04_테스트_오라클에_대하여.pdf"
           },
-          "5": {
-            "id": "1qHjCBw72eOdaVtmgeLsg6P5hH2RvD2u1",
-            "name": "기출_98_컴시응_1_05_HTML5.pdf"
-          },
           "6": {
             "id": "1psYo39vig0oHzX3pj3u7eoJUZx3eXMP8",
             "name": "기출_98_컴시응_1_06_RTP.pdf"
@@ -3416,10 +3412,6 @@
             "id": "1cjaUmLESPbGUJX8D1msmNPCBtfXuUpXO",
             "name": "기출_130_정보관리_4_04_IT프로젝트를_성공적으로_수행하기.pdf"
           },
-          "5": {
-            "id": "17SpSBf6LRrs0l4rpIc7DR3dxn0tNjZrX",
-            "name": "기출_130_정보관리_4_05_웹3_0에_대하여.pdf"
-          },
           "6": {
             "id": "1Tb7KR0heKjC1ubAXvrqdSOxT6gqCzcUW",
             "name": "기출_130_정보관리_4_06_데이터옵스DataOps와_데브옵스DevOps에_대하여.pdf"
@@ -5048,10 +5040,6 @@
             "id": "1-m44vsI3Ry4Jcra1lpFR46kX4pBZDTkv",
             "name": "기출_137_정보관리_1_08_AI_신뢰성_검증.pdf"
           },
-          "9": {
-            "id": "1bv-5eBLlF4TkmOyi1znI1OR1lq-AeCkS",
-            "name": "기출_137_정보관리_1_09_AB.pdf"
-          },
           "10": {
             "id": "13WigviVxdIY9GOndVpq-EPu3hv0B2JHu",
             "name": "기출_137_정보관리_1_10_데이터_늪Data_Swamp을.pdf"
@@ -5181,10 +5169,6 @@
           "12": {
             "id": "1h8x6E6Pso87fS5LkUfEp_VwkuvuvIIPO",
             "name": "기출_137_컴시응_1_12_클라우드_네이티브_보안.pdf"
-          },
-          "13": {
-            "id": "1c1e3ZZhKKJu-HBwTFS9FWMjM6K7DM98W",
-            "name": "기출_137_컴시응_1_13_RISC-V.pdf"
           }
         }
       },
@@ -6332,10 +6316,6 @@
             "id": "1UzumxRot4TxfaxLFVJavQ4-4lw7B5JY8",
             "name": "합숙_2026.08_공통_1일차_1교시_04_AI_인프라에서_AI.pdf"
           },
-          "5": {
-            "id": "1tB6uJt-5q0DGt_URhg2UWW01qweX7FDU",
-            "name": "합숙_2026.08_공통_1일차_1교시_05_PromptLock에_대하여_설명하시오.pdf"
-          },
           "6": {
             "id": "1r9i9Zz65nLE1f9_yYsA4wxVjBmauw_P6",
             "name": "합숙_2026.08_공통_1일차_1교시_06_소프트웨어_리팩토링Refactoring_개념과.pdf"
@@ -6787,10 +6767,6 @@
             "id": "1muyRjIbRO7_cEfCPnaI-6-aQiPXDYhdM",
             "name": "합숙_2026.02_공통_2일차_1교시_08_AI_스케일링법칙에_대해서.pdf"
           },
-          "9": {
-            "id": "1B_Q0nPwNl1scT2Zd4Y-9_SEOuuvTk2D1",
-            "name": "합숙_2026.02_공통_2일차_1교시_09_GPU.pdf"
-          },
           "10": {
             "id": "1dq63RP9_awsZPoWojzL1ypRC7byvoVpI",
             "name": "합숙_2026.02_공통_2일차_1교시_10_OWASP.pdf"
@@ -6810,10 +6786,6 @@
           "14": {
             "id": "1zA8BcQHEu2mwkYAdTNwRpAzSH9Tks4gC",
             "name": "합숙_2026.02_공통_2일차_1교시_14_랜덤_포레스트Random_Forest에.pdf"
-          },
-          "15": {
-            "id": "1WIvaRblQwqXfJsYHeKW8BJgsDYbb0vvr",
-            "name": "합숙_2026.02_공통_2일차_1교시_15_힙Heap에_대해_설명하시오.pdf"
           },
           "16": {
             "id": "1zPwCICUKX5LZSHyn5w6rHUVzmQrZe6M_",
@@ -7024,10 +6996,6 @@
             "id": "12Ab_NT7nV2iuqZsjrGrUDBZ68V6O_F_G",
             "name": "합숙_2025.08_공통_3일차_1교시_11_신경학적_향상Neurological_Enhancemen.pdf"
           },
-          "12": {
-            "id": "1uJL6NRoD_JM5eK4_1g0aeAKiXmq5AVfO",
-            "name": "합숙_2025.08_공통_3일차_1교시_12_데이터모델링에_대해_설명하시오.pdf"
-          },
           "13": {
             "id": "1EJtJxJdX0dfTMNSbYB_d0nnPzyjgHZcw",
             "name": "합숙_2025.08_공통_3일차_1교시_13_양자AI_Quantum_AI에.pdf"
@@ -7053,10 +7021,6 @@
           "4": {
             "id": "1YUBA1xjQueSWe8XCBvo0HEv2ekgJRvj5",
             "name": "합숙_2025.08_공통_2일차_1교시_04_스테이블코인Stablecoin에_대해_설명하시오.pdf"
-          },
-          "5": {
-            "id": "1S4BybJkc6IP2TiMTl-_lpziYSG4SEJvS",
-            "name": "합숙_2025.08_공통_2일차_1교시_05_WEB.pdf"
           },
           "6": {
             "id": "1_rV_NnZ07nNzFvN30S0LfKLYl9mwxFo7",
@@ -7522,10 +7486,6 @@
             "id": "1epZiDYZecjhNzOtTe9fmNACDDnbzvzGx",
             "name": "합숙_2025.02_공통_1일차_1교시_13_SBOM.pdf"
           },
-          "14": {
-            "id": "1QBIXDiv7WKz_V9k7byVOGkznucVUWPM-",
-            "name": "합숙_2025.02_공통_1일차_1교시_14_KCMVP.pdf"
-          },
           "15": {
             "id": "1091U5-5gOyhr-1T_FAuXafW5HY6a5hiw",
             "name": "합숙_2025.02_공통_1일차_1교시_15_RISC-V.pdf"
@@ -7667,10 +7627,6 @@
           "7": {
             "id": "1KeH4DPqSGv3ZJI0Rkr-EdOHI0XMeYA8b",
             "name": "합숙_2022.04_공통_2일차_1교시_07_데이터_전처리Data_preprocessing.pdf"
-          },
-          "8": {
-            "id": "1Po5qmzy3NH6B9Pian3Z89tVyl0Tc7F39",
-            "name": "합숙_2022.04_공통_2일차_1교시_08_전이학습Transfer_Learning에_대해.pdf"
           },
           "9": {
             "id": "1eJewkpkM523DEiTLHJCd5Lf7qgStJJu0",
@@ -8046,10 +8002,6 @@
             "id": "1DqPeJCm_58rJiEm5cFtB1ts4XRYLfQkp",
             "name": "합숙_2024.07_공통_1일차_1교시_09_ETA.pdf"
           },
-          "10": {
-            "id": "1L8tN0n4lfELzZO1NpzzAaFa7Hm7LTZO-",
-            "name": "합숙_2024.07_공통_1일차_1교시_10_마이데이터_2_0.pdf"
-          },
           "11": {
             "id": "1OKMFEwcCmFMWBcaJDDYVxcvXRUxszb1h",
             "name": "합숙_2024.07_공통_1일차_1교시_11_DQ인증에_대해_설명하시오.pdf"
@@ -8087,10 +8039,6 @@
           "2": {
             "id": "1oA8BGt_rCKH4n5CCsQv2574BUrFmklsE",
             "name": "합숙_2024.07_공통_2일차_1교시_02_WAAP.pdf"
-          },
-          "3": {
-            "id": "1__RCjKaxpIfD9-utqjRLMrJ-9OKTHxVE",
-            "name": "합숙_2024.07_공통_2일차_1교시_03_IoT_보안인증제도에_대해.pdf"
           },
           "4": {
             "id": "13odz4Nv0pdJwjMm5mmvQwKqqjaQ9C82T",
@@ -8258,14 +8206,6 @@
             "id": "15eihmdlrj89ifP4vpdAEjrUZgDUfXuYu",
             "name": "합숙_2024.05_공통_2일차_1교시_01_AIoT_보안_위협에.pdf"
           },
-          "2": {
-            "id": "1r0-zT84ZtebaFeDQqTtVoNSeZ5ypTDE6",
-            "name": "합숙_2024.05_공통_2일차_1교시_02_소프트웨어_2_0에.pdf"
-          },
-          "3": {
-            "id": "1oMfABsQOuLG37Q-mci0VXRhO9mxg5yPl",
-            "name": "합숙_2024.05_공통_2일차_1교시_03_FinOps에_대해_설명하시오.pdf"
-          },
           "4": {
             "id": "1o6PUoZZ90JjdghpRDrG8K8s9F75NazxV",
             "name": "합숙_2024.05_공통_2일차_1교시_04_사이버_복원력Cyber_Resilience에.pdf"
@@ -8281,10 +8221,6 @@
           "7": {
             "id": "1cEFLTbJg98PpXlq2o-b1zA95ZV1zhnr-",
             "name": "합숙_2024.05_공통_2일차_1교시_07_데이터모델링에_대해_설명하시오.pdf"
-          },
-          "8": {
-            "id": "1Fnfqv23T7NSBqaBGlXA4bK3CfaTNWFCH",
-            "name": "합숙_2024.05_공통_2일차_1교시_08_오픈랜에_대해_설명하시오.pdf"
           },
           "9": {
             "id": "1PeGt30ChMkgjxV6JZ7GgOqpKbwdn1cI7",
@@ -8573,42 +8509,6 @@
               "id": "1wS7g9o_53Co4RTX_xwKMmdH_TVRxb0Wd",
               "name": "모의_2026.06_공통_1_01_피지컬Physical_AI_구현을.pdf"
             },
-            "2": {
-              "id": "1_3PxUxAbWp0yQKEg5_a-l1vfDsCoxhdE",
-              "name": "모의_2026.06_공통_1_02_행정기관_및_공공기관.pdf"
-            },
-            "3": {
-              "id": "1Y8DBsX_jrWAmulD_PYBZap5nsukd-XKH",
-              "name": "모의_2026.06_공통_1_03_선택_정렬과_삽입.pdf"
-            },
-            "4": {
-              "id": "1Dd-eaQGrRFYR7ALWIUNhpZGBRlcL4k-J",
-              "name": "모의_2026.06_공통_1_04_SRv6Segment_Routing_over.pdf"
-            },
-            "5": {
-              "id": "1LYB9B4-ZOuhFxJa45J_osl4owP23xU-i",
-              "name": "모의_2026.06_공통_1_05_다중벡터_공격Multi-Vector_Attack.pdf"
-            },
-            "6": {
-              "id": "1bj9sjgoIeMWTMOVDsu5-mepSlSiYWZRn",
-              "name": "모의_2026.06_공통_1_06_Affective_AI.pdf"
-            },
-            "7": {
-              "id": "167e4t9tzMixEtb13kKGL5KbH0SwWJ9ps",
-              "name": "모의_2026.06_공통_1_07_BAS.pdf"
-            },
-            "8": {
-              "id": "1j6Ov-F88kgktWkFumLGddPozo1i6aVSY",
-              "name": "모의_2026.06_공통_1_08_테스트_오라클.pdf"
-            },
-            "9": {
-              "id": "1FZtTpcArB1jNVRshULjwf5dL0ApXpEjt",
-              "name": "모의_2026.06_공통_1_09_시계열_데이터베이스.pdf"
-            },
-            "10": {
-              "id": "1Ptwk1FQjCv5NOYaj85olD8hSkfoI3O2W",
-              "name": "모의_2026.06_공통_1_10_데이터_가상화.pdf"
-            },
             "11": {
               "id": "15mUM7BfsWgl9ZR7tNPDVczbcr1NLnp_N",
               "name": "모의_2026.06_공통_1_11_t-검정과_z-검정_비교.pdf"
@@ -8643,18 +8543,6 @@
               "id": "1q-pG1BMnUBIb5J5vyqSnrKidx1k7Q-Lg",
               "name": "모의_2026.06_공통_2_01_국가_AI_컴퓨팅.pdf"
             },
-            "2": {
-              "id": "1mnLUKJkaERjOr17ifo4XoFr2ySnrjLzK",
-              "name": "모의_2026.06_공통_2_02_공공부문을_중심으로_AI.pdf"
-            },
-            "3": {
-              "id": "1VDnj_75mZ2CFouE-1mlEcaRoW-inCACQ",
-              "name": "모의_2026.06_공통_2_03_가명정보_제도_도입으로.pdf"
-            },
-            "4": {
-              "id": "1q4VFpB7WP1uiE813JuzPoH1_hja0kcGn",
-              "name": "모의_2026.06_공통_2_04_소프트웨어_개발_및.pdf"
-            },
             "5": {
               "id": "1pc682NWzVBHY5-qXTEHc6K-nEIcR7S2s",
               "name": "모의_2026.06_공통_2_05_바이브_코딩Vibe_Coding.pdf"
@@ -8681,18 +8569,6 @@
               "id": "1d3OAwpuEm6AhTZUH2EC6ZlV129sT8wu7",
               "name": "모의_2026.06_공통_3_01_통계적_가설검정에_대해.pdf"
             },
-            "2": {
-              "id": "1MlWLoca5apUhxiJiSwYSeNAWcaKxnyn0",
-              "name": "모의_2026.06_공통_3_02_소프트웨어_품질_확보와.pdf"
-            },
-            "3": {
-              "id": "1lF8jO_4QVvsB9Nj_SG66LXWQ8-D4t5kx",
-              "name": "모의_2026.06_공통_3_03_고품질_공공데이터_확보.pdf"
-            },
-            "4": {
-              "id": "1Y_PVyTI53j2KPprAOtIphBwb5hp_VqO8",
-              "name": "모의_2026.06_공통_3_04_과학기술정보통신부에서_인공지능_영향평가.pdf"
-            },
             "5": {
               "id": "1QWiHemdimteXgLOasg3347SrbkYz2xrf",
               "name": "모의_2026.06_공통_3_05_AI_기술이_단순.pdf"
@@ -8718,18 +8594,6 @@
             "1": {
               "id": "13jkVjslUNVP-TklMmNgh-DRpYcjvC9Dm",
               "name": "모의_2026.06_공통_4_01_머신러닝_학습을_위한.pdf"
-            },
-            "2": {
-              "id": "1dd16m5IiOoWUGlcKee6eQaPN68t_2TQq",
-              "name": "모의_2026.06_공통_4_02_MSA.pdf"
-            },
-            "3": {
-              "id": "1c9SHl0nSuN7lpmRX2DfPM8eDA890JMKl",
-              "name": "모의_2026.06_공통_4_03_AI_자동화가_단순.pdf"
-            },
-            "4": {
-              "id": "1BG_KOxEDcHdkCdSLb4x7DvFc-cvcZv2x",
-              "name": "모의_2026.06_공통_4_04_다크웹은_미국_해군연구소에서.pdf"
             },
             "5": {
               "id": "1uQBVRRCCR_OKPAxxuR6vgzbTBwh0xfAN",
@@ -8869,10 +8733,6 @@
               "id": "1k5jX8KMSkJgK3OD2WZZTj0O8p8wV3m_l",
               "name": "모의_2021.11_공통_1_07_소프트웨어_기능안전.pdf"
             },
-            "8": {
-              "id": "1mhgNPH_0jJEHdioENZTqwCHyfTuUMCxl",
-              "name": "모의_2021.11_공통_1_08_상관분석.pdf"
-            },
             "9": {
               "id": "1ZTD3Iufh6wCOvPWw-EEjnVpoyfulUfXD",
               "name": "모의_2021.11_공통_1_09_세그윗SegWit.pdf"
@@ -8896,10 +8756,6 @@
             "14": {
               "id": "1HNqY8sks3TUsZcynJQLBorDkoLAQXHhD",
               "name": "모의_2021.11_공통_1_14_RAN.pdf"
-            },
-            "15": {
-              "id": "1n31K6EEaPt6-jpLvRM6FbFeeGiWoAyY0",
-              "name": "모의_2021.11_공통_1_15_부트로더.pdf"
             },
             "16": {
               "id": "1CX_DGoP0L_RVmTX0sYSelk8wN4W4D9l0",
@@ -9744,10 +9600,6 @@
             "7": {
               "id": "13pFebc0fffbL5Op8U_l5wZqFbp-5rRCd",
               "name": "모의_2024.11_공통_1_07_SDP.pdf"
-            },
-            "8": {
-              "id": "1gYlfvKJ9HfkGllGxuKZfxNAjF_Etb_SM",
-              "name": "모의_2024.11_공통_1_08_기후테크.pdf"
             },
             "9": {
               "id": "1IPlX6I7OfeC4ymTiqrc683wuEaWQUVhy",
@@ -11597,10 +11449,6 @@
               "id": "1JB_fGzIl6oK6ZQQQM10HUU12URhiOjaj",
               "name": "모의_2020.10_공통_1_08_서비스형_블록체인_BaaS.pdf"
             },
-            "9": {
-              "id": "1VpdiKBu2XT6CmL3i8h9V7_ts3w9OYE5o",
-              "name": "모의_2020.10_공통_1_09_데이터_댐_에.pdf"
-            },
             "10": {
               "id": "1MdQqBryVyR-zYY-qYPIjSEswoOxkufKo",
               "name": "모의_2020.10_공통_1_10_R_언어와_파이썬을.pdf"
@@ -12705,10 +12553,6 @@
               "id": "1_uvZhH78Pkn-7zUCqO1xFniFfoJVnoGY",
               "name": "모의_2021.12_공통_1_13_CPS.pdf"
             },
-            "14": {
-              "id": "1f1vWmGEeF0JMfKkQvy4nesE8wQjAknbn",
-              "name": "모의_2021.12_공통_1_14_ITIL.pdf"
-            },
             "15": {
               "id": "1g-MxZv0nj7NgUzdf_8hOpwfzgGShI8NO",
               "name": "모의_2021.12_공통_1_15_프로세스_상태전이도.pdf"
@@ -12927,10 +12771,6 @@
               "id": "1G3dFtNXSf8N_IZOPUH_2pN2dRSlN8tRD",
               "name": "모의_2026.01_공통_1_07_낙관적_락Optimistic_Lock과.pdf"
             },
-            "8": {
-              "id": "193ektmKLOUyKWaj7LUf5T9iUz-F8wF_v",
-              "name": "모의_2026.01_공통_1_08_React2Shell_에_대해.pdf"
-            },
             "9": {
               "id": "1HoTbUNwn_ZLHdSLzaEPso8qKLD8fr_cj",
               "name": "모의_2026.01_공통_1_09_정보시스템_감리_프레임워크.pdf"
@@ -12938,10 +12778,6 @@
             "10": {
               "id": "1crBJJDclwn4xmIS5Ka0xWUObepeSbXuL",
               "name": "모의_2026.01_공통_1_10_합성데이터의_품질평가지표를_설명하시오.pdf"
-            },
-            "11": {
-              "id": "19yOG_kLhrpaD0B5Prlubj4gNlOi6dmgI",
-              "name": "모의_2026.01_공통_1_11_다크팩토리.pdf"
             },
             "12": {
               "id": "1_pw9CicK8ICWO8ZSZ6uNvB3zpvA3YYLw",
@@ -13136,10 +12972,6 @@
             "13": {
               "id": "1nHsRUQOSXq2b5EctuJnq989QIa_8w1OX",
               "name": "모의_2023.07_공통_1_13_XAI.pdf"
-            },
-            "14": {
-              "id": "1z_NtRPDLah8WzUdCXeSWA9RgdvXqxV1x",
-              "name": "모의_2023.07_공통_1_14_자원할당그래프.pdf"
             },
             "15": {
               "id": "16fcp_RmyugVjisu5oFa9KxYMzyeLoAFA",
@@ -13780,10 +13612,6 @@
             "15": {
               "id": "1TnrQugfj5kpjuu3JDbNoaVT8IjnEoPFA",
               "name": "모의_2020.11_공통_1_15_Wait-die_Wound-wait_설명.pdf"
-            },
-            "16": {
-              "id": "1DvdrJI2njUc0G0_4MxYPWGQNu47S0eBh",
-              "name": "모의_2020.11_공통_1_16_Hyperparameter.pdf"
             }
           }
         },
@@ -14039,10 +13867,6 @@
               "id": "1fB9uH0I05lXhvinDgAcmt8EhM2R4keqg",
               "name": "모의_2011.05_공통_1_02_DBMS.pdf"
             },
-            "3": {
-              "id": "1X-M3uunLI6Hb3m71Fov8Ffo4Qyu1Ajrg",
-              "name": "모의_2011.05_공통_1_03_e-Pub에_대하여_설명하시오.pdf"
-            },
             "4": {
               "id": "1Z6EOX4Oc-Gr8G40c8lGQ2jW7IQ1aYl3f",
               "name": "모의_2011.05_공통_1_04_MEAP.pdf"
@@ -14074,14 +13898,6 @@
             "11": {
               "id": "1HP4OWBk0atAkVU6eahRW8FgwM0fEIWTz",
               "name": "모의_2011.05_공통_1_11_프로젝트의_소프트웨어의_원가산정.pdf"
-            },
-            "12": {
-              "id": "1m1EVB43YTYwExu8xsUPYdJQl8cfjjuyu",
-              "name": "모의_2011.05_공통_1_12_CPLD.pdf"
-            },
-            "13": {
-              "id": "1lZHIG_NCSpm17g1MBk7PAcaHBKjwkn7H",
-              "name": "모의_2011.05_공통_1_13_Sort_알고리즘의_종류와.pdf"
             }
           }
         },
@@ -14416,14 +14232,6 @@
             "3": {
               "id": "1BcvCm5awdEJPdlIS4J3t_XDh2lraLT_m",
               "name": "모의_2023.11_공통_1_03_AIaaSAI_as_a.pdf"
-            },
-            "4": {
-              "id": "1bnRswbipt_FHTOBOIeQVAw7easxgQbHX",
-              "name": "모의_2023.11_공통_1_04_API.pdf"
-            },
-            "5": {
-              "id": "1SI8jbONhaRD81sn_y6YSs4feBFK92RGF",
-              "name": "모의_2023.11_공통_1_05_소프트웨어_2_0.pdf"
             },
             "6": {
               "id": "1-qIE3cA69g5mRv4wftAE2R7L3NXDX6-F",
@@ -15366,10 +15174,6 @@
             "3": {
               "id": "1d0CFVsdMdY9g9z5Dd8x_0-AHnm2ONY2o",
               "name": "모의_2014.01_정보관리_1_03_TPI.pdf"
-            },
-            "4": {
-              "id": "1Eo7UHr6icFMaJ90HrO9-tSGbSFL1SYVs",
-              "name": "모의_2014.01_정보관리_1_04_TRIZ.pdf"
             },
             "5": {
               "id": "18nWxiOSv_eLbGFmtWnp02H6LQ7xERCAC",
@@ -17751,10 +17555,6 @@
               "id": "1XpPNP05G3TPXbfQt3Lf2l1dTGPZqtDAI",
               "name": "모의_2012.11_정보관리_1_10_CBO.pdf"
             },
-            "11": {
-              "id": "1FBbMzz_3att0EzIrK1F5E3nGClyXwDky",
-              "name": "모의_2012.11_정보관리_1_11_BI_3_0에.pdf"
-            },
             "12": {
               "id": "1NvQsB0FjEDXWIyucisZrmuuwawW89Sk2",
               "name": "모의_2012.11_정보관리_1_12_Clustered_Index_와.pdf"
@@ -18541,14 +18341,6 @@
               "id": "1akqMbUaUiOpf6WnjnF_kN1Fj-fjU4zsv",
               "name": "모의_2011.01_정보관리_1_07_정보보호체계isms_에_대해.pdf"
             },
-            "8": {
-              "id": "1pI_tLQu29DGRhz0wTG-8uWXblFejaEvH",
-              "name": "모의_2011.01_정보관리_1_08_소셜커머스에_대해_설명하시오.pdf"
-            },
-            "9": {
-              "id": "1_qX0sESD8lBcMJAlflyZjvTwht8GOmoJ",
-              "name": "모의_2011.01_정보관리_1_09_Hashing에_대해_설명하시오.pdf"
-            },
             "10": {
               "id": "1Liw-1Juj7RE7djFdGIh7B509Jv1mYfe1",
               "name": "모의_2011.01_정보관리_1_10_자동_이미지_태깅.pdf"
@@ -18556,14 +18348,6 @@
             "11": {
               "id": "1I45kZks-PbqO3oRBG0j4zQgqoJHTyGAT",
               "name": "모의_2011.01_정보관리_1_11_MDA.pdf"
-            },
-            "12": {
-              "id": "1q9joU0USka_cM5_4RuPhjV64_iSnkg17",
-              "name": "모의_2011.01_정보관리_1_12_Firewall_에_대해.pdf"
-            },
-            "13": {
-              "id": "1lJC35Zt8Ud4OPQVU61IqvLC9eKjH2pgX",
-              "name": "모의_2011.01_정보관리_1_13_MPEG-V.pdf"
             }
           }
         },
@@ -19027,10 +18811,6 @@
               "id": "1_fgnZHBw5bJrysIVVLFaCVt10uxy7fHc",
               "name": "모의_2021.03_공통_1_05_딥페이크Deepfake.pdf"
             },
-            "6": {
-              "id": "1wzVVWfaoT5wZMdIoQzP6ENBLZaOB8bdw",
-              "name": "모의_2021.03_공통_1_06_인증기술에_대해_설명하시오.pdf"
-            },
             "7": {
               "id": "1eMOmQW_b347O5drOVv54KZRIYO04CXV8",
               "name": "모의_2021.03_공통_1_07_데이터_전처리Data_preprocessing.pdf"
@@ -19196,10 +18976,6 @@
             "1": {
               "id": "1kvwSwk8bGL-xaxrqHQ1eZU1z8faRgMdF",
               "name": "모의_2022.10_공통_1_01_비용함수Cost_function.pdf"
-            },
-            "2": {
-              "id": "1Z4wUStLALSnDfMaszMwKr1aXYsPM_Fp9",
-              "name": "모의_2022.10_공통_1_02_GPT.pdf"
             },
             "3": {
               "id": "1y2ZTJfs0kohNd33wxcxAbBy7m1kgKzor",
@@ -19645,10 +19421,6 @@
               "id": "1ghvspJa_brWeJKzqmlK7In0ceEU21JwK",
               "name": "모의_2010.11_공통_2_04_HTML5.pdf"
             },
-            "6": {
-              "id": "1IBRR-XZgzBk6ccpR7hwk4SHbG8mbjinF",
-              "name": "모의_2010.11_공통_2_06_관리Delone과_McLean의_정보시스템.pdf"
-            },
             "7": {
               "id": "1KeROH_pCnNGsmbWiQZ5t5g4vDZed9b_y",
               "name": "모의_2010.11_공통_2_07_최단경로를_구하는_알고리즘인.pdf"
@@ -19853,10 +19625,6 @@
               "id": "1EVxq0iK81evdYnpnh66nYTSQhSFL_kCk",
               "name": "모의_2021.05_공통_4_01_UWB.pdf"
             },
-            "2": {
-              "id": "1KpazSAGEcjGBlZIBlhIEfQeVkYJh-eT-",
-              "name": "모의_2021.05_공통_4_02_인공지능을_이용한_얼굴정보.pdf"
-            },
             "3": {
               "id": "1kEUhvkBVr7AqFa2HfKffbvq7nW6R-j5t",
               "name": "모의_2021.05_공통_4_03_기업에서_클라우드_운영.pdf"
@@ -19872,10 +19640,6 @@
             "6": {
               "id": "1fCjBu2tGFfsY5-G7qYhm4AHwzQ1viycZ",
               "name": "모의_2021.05_공통_4_06_사이버_공격이_증가하고.pdf"
-            },
-            "7": {
-              "id": "1oe8Zi9-7hjlIkBoFpUFnZxJxa02EyOA-",
-              "name": "모의_2021.05_공통_4_07_COVID.pdf"
             },
             "8": {
               "id": "1KHH2kV9zk2wynW0Q9sHv28zN7lNCYgWU",
