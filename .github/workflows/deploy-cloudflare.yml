@@ -89,7 +89,7 @@ jobs:
           set -uo pipefail
           SITE=https://kpcitpe-search.pages.dev
           want_js=$(grep -oE '/_astro/[^"]+\.js' dist/index.html | sort -u)
-          for i in $(seq 1 24); do
+          for i in $(seq 1 60); do
             live_js=$(curl -sf "$SITE/" | grep -oE '/_astro/[^"]+\.js' | sort -u)
             if [ "$live_js" = "$want_js" ] && curl -sf "$SITE/data/problems.json" | cmp -s - dist/data/problems.json; then
               echo "운영 반영 확인 (${i}번째 확인)"
@@ -97,7 +97,7 @@ jobs:
             fi
             sleep 5
           done
-          echo "::error::2분 안에 운영 주소에 이번 빌드가 반영되지 않음"
+          echo "::error::5분 안에 운영 주소에 이번 빌드가 반영되지 않음"
           exit 1
 
       # 운영 캐시 헤더·번들 반영·데이터(방금 빌드한 data/problems.json과 회차별 비교)·API 게이트 점검

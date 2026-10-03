@@ -57,6 +57,15 @@ describe('자동 task 생성', () => {
     expect(specs.map((s) => s.fileId).sort()).toEqual(['app-2012', 'app-3', 'combined-2', 'kichul-88-app']);
   });
 
+  it('P3b: includeAlreadySplit — 이미 분할된 항목도 대상에 넣되 재분할 금지 회차는 여전히 제외', () => {
+    // 내용 어긋남 복구처럼 키를 명시해 재분할할 때 사용 (questions가 남아 있어도 task 생성)
+    const all = generateAllSpecsFromMap(map, { includeAlreadySplit: true });
+    expect(all.find((s) => s.fileId === 'mgmt-3')).toMatchObject({ mappingKey: '모의/KPC/2016.01/3_정보관리' });
+    expect(all.map((s) => s.fileId)).not.toContain('kichul-87-no-resplit');
+    expect(all.map((s) => s.fileId)).not.toContain('mgmt-no-resplit');
+    expect(all.map((s) => s.fileId).sort()).toEqual(['app-2012', 'app-3', 'combined-2', 'kichul-88-app', 'mgmt-3']);
+  });
+
   it('P4: SPLIT_ONLY — "모의:종목별"은 모의 종목별만, "기출"은 기출만, 빈 값은 전체', () => {
     expect(filterSpecs(specs, '모의:종목별').map((s) => s.fileId).sort()).toEqual(['app-2012', 'app-3']);
     expect(filterSpecs(specs, '기출').map((s) => s.fileId)).toEqual(['kichul-88-app']);

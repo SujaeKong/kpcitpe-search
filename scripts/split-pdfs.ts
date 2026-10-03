@@ -1021,8 +1021,11 @@ export function specFromMappingEntry(
 
 /**
  * mappings 전체에서 task 자동 생성. questions 필드가 이미 있거나 재분할 금지(NO_RESPLIT_KEYS)면 스킵 (idempotent).
+ *
+ * includeAlreadySplit: 이미 분할된 항목도 포함 — 운영자가 키를 **명시해서** 재분할할 때 쓴다
+ * (내용 어긋남 복구 등). 재분할 금지 회차는 이 옵션으로도 풀리지 않는다(PROJECT.md §10).
  */
-export function generateAllSpecsFromMap(map: any): TestSpec[] {
+export function generateAllSpecsFromMap(map: any, { includeAlreadySplit = false } = {}): TestSpec[] {
   const specs: TestSpec[] = [];
   const noResplit = new Set(NO_RESPLIT_KEYS);
   const groups: ['기출' | '합숙' | '모의', string[], Record<string, any>][] = [
@@ -1034,7 +1037,7 @@ export function generateAllSpecsFromMap(map: any): TestSpec[] {
     for (const [round, sessions] of Object.entries(rounds)) {
       for (const [key, entry] of Object.entries(sessions as Record<string, any>)) {
         if (!entry?.id) continue;
-        if (entry.questions && Object.keys(entry.questions).length > 0) continue;
+        if (!includeAlreadySplit && entry.questions && Object.keys(entry.questions).length > 0) continue;
         const mappingKey = [...prefix, round, key].join('/');
         if (noResplit.has(mappingKey)) continue;
         const spec = specFromMappingEntry(sourceType, round, key, entry);
@@ -1147,8 +1150,13 @@ async function main() {
   const mappingPath = path.join(ROOT, 'data', 'mappings', 'explanation-files.json');
   const mappingForSpecs = fs.existsSync(mappingPath) ? JSON.parse(fs.readFileSync(mappingPath, 'utf8')) : {};
   const mode = process.env.SPLIT_MODE ?? 'test';
+  // 키를 명시한 실행은 이미 분할된 항목도 대상에 넣는다 (내용 어긋남 복구 등 의도적 재분할)
+  const explicitKeys = Boolean(process.env.SPLIT_KEYS?.trim());
   let specsToRun: TestSpec[] = filterSpecsByKeys(
-    filterSpecs(mode === 'all' ? generateAllSpecsFromMap(mappingForSpecs) : TEST_SPECS, process.env.SPLIT_ONLY),
+    filterSpecs(
+      mode === 'all' ? generateAllSpecsFromMap(mappingForSpecs, { includeAlreadySplit: explicitKeys }) : TEST_SPECS,
+      process.env.SPLIT_ONLY,
+    ),
     process.env.SPLIT_KEYS,
   );
   if (process.env.SPLIT_KEYS) {
