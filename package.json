@@ -21,7 +21,8 @@
     "test:data": "vitest run --config tests/vitest.config.ts tests/data",
     "test:e2e": "npm run build && vitest run --config tests/vitest.config.ts tests/e2e",
     "test:live": "vitest run --config tests/vitest.config.ts tests/live",
-    "astro": "astro"
+    "astro": "astro",
+    "split:audit:content": "tsx scripts/audit-split-content.ts"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^11.2.0",

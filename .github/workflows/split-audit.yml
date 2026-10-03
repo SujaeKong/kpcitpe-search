@@ -13,6 +13,11 @@ on:
         description: '병렬 다운로드 수'
         type: string
         default: '6'
+      check:
+        description: "검사 종류 — alignment(통합본 재검출) / content(분할본 내용 대조) / both"
+        type: choice
+        options: ['both', 'alignment', 'content']
+        default: 'both'
 
 permissions:
   contents: read
@@ -34,17 +39,30 @@ jobs:
       - name: Build data (problems.json)
         run: npm run build:data
 
+      # 통합본을 다시 재서 검출 수·번호·제목 정렬을 본다 (이미 올라간 분할본 파일은 읽지 않음)
       - name: Audit split alignment
+        if: inputs.check != 'content'
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           AUDIT_ONLY: ${{ inputs.only }}
           CONCURRENCY: ${{ inputs.concurrency }}
         run: npm run split:audit
 
+      # 분할본 PDF를 실제로 읽어 연결된 엑셀 문항과 대조 (정렬 감사가 못 잡는 짝 어긋남)
+      - name: Audit split content
+        if: inputs.check != 'alignment'
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          AUDIT_ONLY: ${{ inputs.only }}
+          CONCURRENCY: ${{ inputs.concurrency }}
+        run: npm run split:audit:content
+
       - name: Upload audit result
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: split-audit
-          path: tmp-split/split-audit.json
+          path: |
+            tmp-split/split-audit.json
+            tmp-split/split-content-audit.json
           if-no-files-found: warn
