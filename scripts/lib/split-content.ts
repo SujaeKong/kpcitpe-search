@@ -13,7 +13,16 @@
  * 그래서 분할본 첫 페이지 텍스트를 그 교시의 모든 문항 제목과 대조해
  * "가장 잘 맞는 문항"이 연결된 문항인지 확인한다.
  */
-import { titleTokens } from '../split-pdfs';
+const TITLE_STOPWORDS = new Set([
+  '설명하시오', '대하여', '대해', '대해서', '다음', '비교하시오', '제시하시오', '기술하시오', '서술하시오',
+  '설명', '관하여', '관련', '위한', '하시오', '답하시오', '물음에', '제시된', '있는', '그리고',
+]);
+
+/** 문항 제목의 핵심 토큰 (2자 이상 한글·영숫자, 흔한 서술어 제외, 소문자) */
+export function titleTokens(title: string): string[] {
+  const tokens = (title.match(/[A-Za-z0-9]{2,}|[가-힣]{2,}/g) ?? []).map((t) => t.toLowerCase());
+  return [...new Set(tokens.filter((t) => !TITLE_STOPWORDS.has(t)))];
+}
 
 export interface SplitContentMatch {
   /** 가장 잘 맞는 제목의 인덱스 (titles 기준). 근거가 없으면 -1 */

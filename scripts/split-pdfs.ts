@@ -25,6 +25,7 @@ import { PDFDocument } from 'pdf-lib';
 // @ts-ignore
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { NO_RESPLIT_KEYS, sameMappingContent } from './lib/explanation-keys';
+import { matchSplitContent, titleTokens } from './lib/split-content';
 
 const __filename = url.fileURLToPath(import.meta.url);
 const ROOT = path.resolve(path.dirname(__filename), '..');
@@ -383,17 +384,9 @@ export function detectQuestionRangesWithSignal(pageTexts: string[]): {
 }
 
 // ===== 제목 정렬 검증 =====
-
-const TITLE_STOPWORDS = new Set([
-  '설명하시오', '대하여', '대해', '대해서', '다음', '비교하시오', '제시하시오', '기술하시오', '서술하시오',
-  '설명', '관하여', '관련', '위한', '하시오', '답하시오', '물음에', '제시된', '있는', '그리고',
-]);
-
-/** 문항 제목의 핵심 토큰 (2자 이상 한글·영숫자, 흔한 서술어 제외, 소문자) */
-export function titleTokens(title: string): string[] {
-  const tokens = (title.match(/[A-Za-z0-9]{2,}|[가-힣]{2,}/g) ?? []).map((t) => t.toLowerCase());
-  return [...new Set(tokens.filter((t) => !TITLE_STOPWORDS.has(t)))];
-}
+// 토큰·내용 판정은 scripts/lib/split-content.ts에 둔다 (감사 스크립트가 split-pdfs를
+// 거치지 않고 쓰도록 — 순환 참조 방지). 기존 import 경로 유지를 위해 여기서 재수출한다.
+export { titleTokens };
 
 /**
  * 분할 구간 첫 페이지 텍스트(rangeTexts[i])가 짝지은 문항 제목(titles[i])과 맞는지 검사.
@@ -702,25 +695,28 @@ async function processSplitTask(
         console.log(`   ✔ ${name} → ${uploadedFile.id} (p${range.startPage}-${range.endPage}, ${pageBuf.length} bytes)`);
       }
 
-      // 자체검증 — 업로드된 분할 PDF에 시그널별 마커가 PDF 내부 번호(range.questionNumber)로 있는지 확인.
-      // 제목으로 보강한 문항은 그 마커가 애초에 없으므로(보강한 이유), 뽑을 때와 같은 기준인
-      // 문항 제목 토큰 일치로 검증한다.
+      // 자체검증 — 업로드된 분할 PDF가 **이 엑셀 문항의 것인지** 확인한다.
+      //
+      // 내용 검증이 핵심이다: 시그널 마커(PDF 내부 번호)만 보면, 페이지 순서 ↔ 엑셀 번호 순서
+      // 1:1 짝짓기가 어긋났을 때 엉뚱한 문항의 분할본이 그 번호로 저장돼도 통과한다.
+      // (모의 2026.06 2교시 — 4번 문항에 PDF 8번 NPU 해설이 연결돼 운영에 노출됐다.)
+      // 그래서 같은 교시의 다른 문항 제목과 비교해 '연결된 문항이 최고점'인지까지 본다.
       let validated = false;
       let validationNote: string | undefined;
       try {
         const verifyBuf = await downloadPdf(writeDrive, uploadedFile.id);
         const verifyTexts = await extractPageTexts(verifyBuf);
         const fullText = verifyTexts.join(' ');
-        if (filledNums.has(range.questionNumber)) {
-          const tokens = titleTokens(problem.title);
-          const flat = fullText.replace(/\s+/g, '').toLowerCase();
-          const hit = tokens.filter((t) => flat.includes(t)).length;
-          if (tokens.length >= 2 && hit / tokens.length >= 0.6) {
-            validated = true;
-          } else {
-            validationNote = `제목 보강 문항 ${range.questionNumber}번: 분할 PDF에 제목 토큰 ${hit}/${tokens.length}만 있음`;
-          }
+        const m = matchSplitContent(verifyTexts.slice(0, 2).join(' '), titles, idx);
+        if (m.verdict === 'mismatch') {
+          validationNote = `내용 불일치: ${problem.questionNumber}번에 ${sortedProblems[m.bestIndex]?.questionNumber}번 내용 (점수 ${m.expectedScore.toFixed(2)} < ${m.bestScore.toFixed(2)})`;
+        } else if (m.verdict === 'ok') {
+          validated = true;
+        } else if (filledNums.has(range.questionNumber)) {
+          // 제목으로 보강한 문항은 시그널 마커가 애초에 없으므로 제목 근거가 필수
+          validationNote = `제목 보강 문항 ${range.questionNumber}번: 분할 PDF의 제목 근거 부족 (점수 ${m.expectedScore.toFixed(2)})`;
         } else {
+          // 제목 근거가 약한 경우(표지·이미지 위주 문항)는 종전처럼 시그널 마커로 판정
           const sigCfg = SIGNALS.find((s) => s.name === detectionSignal);
           if (sigCfg && sigCfg.validateSplit(fullText, range.questionNumber)) {
             validated = true;

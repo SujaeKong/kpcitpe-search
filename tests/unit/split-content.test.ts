@@ -46,4 +46,11 @@ describe('분할본 내용 판정 (matchSplitContent)', () => {
     expect(matchSplitContent(text, near, 0).verdict).toBe('ok');
     expect(matchSplitContent(text, near, 1).verdict).toBe('ok');
   });
+
+  it('N6: 페이지 순서 ↔ 엑셀 번호 짝짓기가 한 칸씩 어긋나면 전부 mismatch로 잡힌다', () => {
+    // 분할본 i가 문항 i+1의 내용을 담은 상태 (옛 off-by-one 유형)
+    const texts = titles.map((t) => `문 제 N. ${t}`);
+    const verdicts = titles.map((_, i) => matchSplitContent(texts[i + 1] ?? '', titles, i).verdict);
+    expect(verdicts.slice(0, 2)).toEqual(['mismatch', 'mismatch']);
+  });
 });
