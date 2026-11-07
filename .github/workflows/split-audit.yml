@@ -17,10 +17,19 @@ on:
         description: '병렬 다운로드 수'
         type: string
         default: '6'
+      target:
+        description: "text-layer 대상 — combined(통합본) / splits(분할본)"
+        type: choice
+        options: ['combined', 'splits']
+        default: 'combined'
+      sample:
+        description: 'text-layer 표본 수 (0=전체)'
+        type: string
+        default: '0'
       check:
         description: "검사 종류 — alignment(통합본 재검출) / content(분할본 내용 대조) / both"
         type: choice
-        options: ['both', 'alignment', 'content']
+        options: ['both', 'alignment', 'content', 'text-layer']
         default: 'both'
 
 permissions:
@@ -45,7 +54,7 @@ jobs:
 
       # 통합본을 다시 재서 검출 수·번호·제목 정렬을 본다 (이미 올라간 분할본 파일은 읽지 않음)
       - name: Audit split alignment
-        if: github.event_name == 'workflow_dispatch' && inputs.check != 'content'
+        if: github.event_name == 'workflow_dispatch' && (inputs.check == 'both' || inputs.check == 'alignment')
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           AUDIT_ONLY: ${{ inputs.only }}
@@ -54,12 +63,23 @@ jobs:
 
       # 분할본 PDF를 실제로 읽어 연결된 엑셀 문항과 대조 (정렬 감사가 못 잡는 짝 어긋남)
       - name: Audit split content
-        if: github.event_name != 'workflow_dispatch' || inputs.check != 'alignment'
+        if: github.event_name != 'workflow_dispatch' || inputs.check == 'both' || inputs.check == 'content'
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           AUDIT_ONLY: ${{ inputs.only }}
           CONCURRENCY: ${{ inputs.concurrency }}
         run: npm run split:audit:content
+
+      # PDF에 글자가 없어서(이미지 페이지) 분할이 안 되는 규모 집계 — OCR 도입 판단 근거
+      - name: Audit text layer
+        if: github.event_name == 'workflow_dispatch' && inputs.check == 'text-layer'
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          AUDIT_ONLY: ${{ inputs.only }}
+          CONCURRENCY: ${{ inputs.concurrency }}
+          AUDIT_TARGET: ${{ inputs.target }}
+          SAMPLE: ${{ inputs.sample }}
+        run: npm run split:audit:text
 
       - name: Upload audit result
         if: always()
@@ -69,4 +89,5 @@ jobs:
           path: |
             tmp-split/split-audit.json
             tmp-split/split-content-audit.json
+            tmp-split/text-layer-audit.json
           if-no-files-found: warn
