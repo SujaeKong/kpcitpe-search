@@ -1,8 +1,8 @@
 /**
- * 디버그용 — 통합 PDF 페이지별 텍스트 첫/끝 부분 출력.
- * 분할 검출 알고리즘의 진짜 시그널 식별을 위해 사용.
+ * 디버그용 — 통합 PDF 페이지별 텍스트 첫/끝 부분 + 하단 모서리 텍스트 출력.
+ * 분할 검출이 특정 문항을 놓칠 때 그 페이지의 실제 서식을 확인하는 데 쓴다.
  *
- * 환경변수: GOOGLE_SERVICE_ACCOUNT_JSON
+ * 환경변수: GOOGLE_SERVICE_ACCOUNT_JSON, DEBUG_FILE_ID(선택), DEBUG_PAGES(선택, 예 '23-31')
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -33,7 +33,10 @@ function makeReadDrive() {
 
 async function main() {
   const drive = makeReadDrive();
-  const fileId = '1RAstKItBKBU6Rh-egPgiTHiQuUygQSC1';
+  // 기본값은 138 합숙 1일차 1교시 — DEBUG_FILE_ID로 임의 PDF 지정 가능
+  const fileId = process.env.DEBUG_FILE_ID?.trim() || '1RAstKItBKBU6Rh-egPgiTHiQuUygQSC1';
+  // DEBUG_PAGES='23-31'처럼 범위를 주면 그 구간만 출력 (로그 길이 절약)
+  const [pFrom, pTo] = (process.env.DEBUG_PAGES ?? '').split('-').map((x) => parseInt(x, 10));
   const res = await drive.files.get(
     { fileId, alt: 'media' },
     { responseType: 'arraybuffer' },
@@ -47,7 +50,9 @@ async function main() {
   console.log(`페이지: ${doc.numPages}\n`);
 
   // 페이지별 첫 250자 + 끝 150자 + 텍스트 아이템들의 좌표 (특히 모서리 영역)
-  for (let i = 1; i <= doc.numPages; i++) {
+  const from = Number.isFinite(pFrom) ? pFrom : 1;
+  const to = Number.isFinite(pTo) ? pTo : Number.isFinite(pFrom) ? pFrom : doc.numPages;
+  for (let i = from; i <= Math.min(to, doc.numPages); i++) {
     const page = await doc.getPage(i);
     const tc = await page.getTextContent();
     const texts = tc.items as any[];
