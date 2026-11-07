@@ -135,7 +135,7 @@ async function main() {
         const cause = det.ranges.length === 0 ? (blanks >= pages.length / 2 ? 'image-heavy' : 'no-signal')
           : blanks > 0 && missing.length > 0 ? 'blank-pages'
           : 'count-mismatch';
-        rows.push({ key: t.key, name: t.fileName, pages: pages.length, blanks, detected: det.ranges.length, problems: t.titles.length, splitCount: t.splitCount, missing: missing.length, cause });
+        rows.push({ key: t.key, name: t.fileName, pages: pages.length, blanks, detected: det.ranges.length, problems: t.titles.length, splitCount: t.splitCount, undetected: missing.length, unsplit: t.titles.length - t.splitCount, cause });
       } catch (err) { rows.push({ key: t.key, name: t.fileName, error: (err as Error).message, cause: 'error' }); }
       if (++done % 25 === 0) console.log(`  …${done}/${picked.length}`);
     }
@@ -145,18 +145,20 @@ async function main() {
   const problemsByCause: Record<string, number> = {};
   for (const r of rows) {
     byCause[r.cause] = (byCause[r.cause] ?? 0) + 1;
-    problemsByCause[r.cause] = (problemsByCause[r.cause] ?? 0) + (r.missing ?? 0);
+    problemsByCause[r.cause] = (problemsByCause[r.cause] ?? 0) + (r.undetected ?? 0);
   }
   console.log('\n━━━━━ 통합본 폴백 원인 분류 ━━━━━');
   console.log('entry 수:', JSON.stringify(byCause));
-  console.log('미분할 문항 수:', JSON.stringify(problemsByCause));
+  // 주의: '검출 누락'은 detectRanges가 못 잡은 번호 수다. 통합본으로만 연결된 문항 수
+  // (=미분할 문항)와 다르다 — 검출은 됐지만 수 불일치로 분할을 포기한 경우가 있다.
+  console.log('검출 누락 문항 수:', JSON.stringify(problemsByCause));
   const blankRows = rows.filter((r) => r.blanks > 0);
   console.log(`\n빈(이미지) 페이지가 있는 통합본: ${blankRows.length}/${rows.length}개`);
-  for (const r of blankRows.slice(0, 15)) console.log(`  ${r.key}: ${r.pages}p 중 빈 ${r.blanks}p / 검출 ${r.detected}/${r.problems} (${r.cause})`);
+  for (const r of blankRows.slice(0, 15)) console.log(`  ${r.key}: ${r.pages}p 중 빈 ${r.blanks}p / 검출 ${r.detected}/${r.problems} / 통합본 연결 ${r.unsplit}문항 (${r.cause})`);
   fs.mkdirSync(path.join(ROOT, 'tmp-split'), { recursive: true });
   fs.writeFileSync(path.join(ROOT, 'tmp-split/text-layer-audit.json'), `${JSON.stringify({ target, sampled: picked.length, total: all.length, byCause, problemsByCause, rows }, null, 2)}\n`);
   if (process.env.GITHUB_STEP_SUMMARY) {
-    fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### 텍스트 레이어 감사\n\n- 표본 ${picked.length}/${all.length}\n- 원인(entry): ${JSON.stringify(byCause)}\n- 원인(문항): ${JSON.stringify(problemsByCause)}\n`);
+    fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### 텍스트 레이어 감사\n\n- 표본 ${picked.length}/${all.length}\n- 원인(entry): ${JSON.stringify(byCause)}\n- 원인별 검출 누락 문항: ${JSON.stringify(problemsByCause)}\n`);
   }
 }
 
