@@ -169,7 +169,9 @@ function parseMouiRoundSession(name: string): { round: string; session: string }
   if (!/해설집|해설/.test(name)) return null;
 
   // 패턴 A (신형): _해설집_YYYYMM_N교시
-  let m = name.match(/_해설집_(\d{4})(\d{2})_(\d+)교시/);
+  //  - '해설지'/'해설집' 둘 다 허용 — 2026.10(제132회)부터 KPC가 '해설지'로 보냄
+  //    ('[KPC기술사IMPACT실전모의고사]_제132회_해설지_202610_1교시.pdf')
+  let m = name.match(/_해설[집지]_(?:제?\d+회_)?(\d{4})(\d{2})_(\d+)교시/);
   if (m) return { round: `${m[1]}.${m[2]}`, session: m[3] };
 
   // 패턴 B (구형): N교시해설-제M회(YYYY년MM월)
