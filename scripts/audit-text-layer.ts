@@ -32,9 +32,9 @@ const ROOT = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..'
 /** 머리말·쪽번호만 남은 페이지도 '글자 없음'으로 본다 — 본문이 이미지인 경우 */
 const BLANK_CHARS = 120;
 
-interface Entry { key: string; fileId: string; fileName: string; titles: string[]; numbers: number[]; splitCount: number }
+export interface Entry { key: string; fileId: string; fileName: string; titles: string[]; numbers: number[]; splitCount: number }
 
-function collect(map: any, problems: any[], only: string): Entry[] {
+export function collect(map: any, problems: any[], only: string): Entry[] {
   const out: Entry[] = [];
   const groups: [('기출' | '합숙' | '모의'), string[], Record<string, any>][] = [
     ['기출', ['기출'], map.기출 ?? {}],
@@ -67,7 +67,7 @@ function collect(map: any, problems: any[], only: string): Entry[] {
 }
 
 /** 재현 가능한 표본 추출 (키 해시 순) */
-function sample<T extends { key: string }>(rows: T[], n: number): T[] {
+export function sample<T extends { key: string }>(rows: T[], n: number): T[] {
   if (n <= 0 || rows.length <= n) return rows;
   const hash = (s: string) => [...s].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
   return [...rows].sort((a, b) => hash(a.key) - hash(b.key)).slice(0, n);

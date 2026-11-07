@@ -27,9 +27,9 @@ on:
         type: string
         default: '0'
       check:
-        description: "검사 종류 — alignment(통합본 재검출) / content(분할본 내용 대조) / both"
+        description: "검사 종류 — alignment(통합본 재검출) / content(분할본 내용 대조) / both / text-layer / renumber(번호 재배정 실험)"
         type: choice
-        options: ['both', 'alignment', 'content', 'text-layer']
+        options: ['both', 'alignment', 'content', 'text-layer', 'renumber']
         default: 'both'
 
 permissions:
@@ -81,6 +81,16 @@ jobs:
           SAMPLE: ${{ inputs.sample }}
         run: npm run split:audit:text
 
+      # 실험: 검출 수는 맞는데 번호 시퀀스가 깨진 건을 위치순 재배정하면 제목 정렬을 통과하는지
+      - name: Renumber experiment
+        if: github.event_name == 'workflow_dispatch' && inputs.check == 'renumber'
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          AUDIT_ONLY: ${{ inputs.only }}
+          CONCURRENCY: ${{ inputs.concurrency }}
+          SAMPLE: ${{ inputs.sample }}
+        run: npm run split:experiment:renumber
+
       - name: Upload audit result
         if: always()
         uses: actions/upload-artifact@v4
@@ -90,4 +100,5 @@ jobs:
             tmp-split/split-audit.json
             tmp-split/split-content-audit.json
             tmp-split/text-layer-audit.json
+            tmp-split/renumber-experiment.json
           if-no-files-found: warn
