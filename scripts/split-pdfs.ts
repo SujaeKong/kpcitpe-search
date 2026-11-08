@@ -512,7 +512,7 @@ export function checkSplitGuards(
   ranges: QuestionRange[],
   pageTexts: string[],
   titles: string[],
-  { alignment = true }: { alignment?: boolean } = {},
+  { alignment = true, expectedNumbers }: { alignment?: boolean; expectedNumbers?: number[] } = {},
 ): SplitGuardResult {
   if (ranges.length === 0) {
     return { ok: false, reason: 'none', message: '검출 실패 — 어떤 시그널도 ≥3 문항 추출 못 함. 통합 PDF fallback 권장.' };
@@ -520,10 +520,21 @@ export function checkSplitGuards(
   if (ranges.length !== titles.length) {
     return { ok: false, reason: 'count', message: `검출 ${ranges.length}개 ≠ problems ${titles.length}개 — 분할 포기, 통합 PDF fallback` };
   }
-  // 검출된 문항번호가 1, 2, 3, ... 갭 없이 연속 — 페이지번호 mis-match 차단
+  // 검출된 문항번호가 **엑셀 문항번호와 같은지** — 페이지번호 mis-match 차단.
+  //
+  // expectedNumbers를 안 주면 1..N을 기대한다(종전 동작). 옛 모의는 한 교시에서
+  // 정보관리 1~6번 / 컴시응 7~12번으로 번호가 이어져, 1..N 고정 규칙이 PDF·엑셀이
+  // 완전히 일치하는 31개 해설집(186문항)을 쓸데없이 포기시켰다(2026-11-07 전수 감사).
   const nums = [...ranges].sort((a, b) => a.questionNumber - b.questionNumber).map((r) => r.questionNumber);
-  if (!nums.every((n, i) => n === i + 1)) {
-    return { ok: false, reason: 'sequence', message: `검출 번호 시퀀스 비정상 [${nums.join(',')}] — 페이지번호 mis-match 의심, 분할 포기` };
+  const expected = expectedNumbers
+    ? [...expectedNumbers].sort((a, b) => a - b)
+    : nums.map((_, i) => i + 1);
+  if (nums.length !== expected.length || !nums.every((n, i) => n === expected[i])) {
+    return {
+      ok: false,
+      reason: 'sequence',
+      message: `검출 번호 [${nums.join(',')}] ≠ 엑셀 번호 [${expected.join(',')}] — 페이지번호 mis-match 의심, 분할 포기`,
+    };
   }
   // 번호가 정상이어도 문항↔내용이 한 칸씩 어긋날 수 있음(옛 형식) — 구간 첫 페이지에 짝지은 문항 제목이 있는지
   if (alignment) {
@@ -642,7 +653,9 @@ async function processSplitTask(
       console.log(`   제목으로 보강: ${added.map((r) => `${r.questionNumber}번:p${r.startPage}`).join(', ')}`);
     }
 
-    const guard = checkSplitGuards(detectedRanges, pageTexts, titles);
+    const guard = checkSplitGuards(detectedRanges, pageTexts, titles, {
+      expectedNumbers: sortedProblems.map((p) => p.questionNumber as number),
+    });
     if (!guard.ok) {
       errors.push(guard.message);
       return { task, ok: false, uploaded, errors, detectedRanges, detectionSignal, pageCount };

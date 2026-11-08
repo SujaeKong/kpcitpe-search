@@ -98,6 +98,22 @@ describe('안전 가드 (checkSplitGuards)', () => {
     expect(checkSplitGuards(ranges(1, 2, 4), ['', '', ''], titles)).toMatchObject({ ok: false, reason: 'sequence', message: expect.stringContaining('[1,2,4]') });
   });
 
+  it('V19: expectedNumbers를 주면 1..N 대신 그 번호와 비교한다 — 옛 모의 컴시응 7~12번 (2026-11-07 전수 감사 31개 구제)', () => {
+    const cert = ranges(7, 8, 9);
+    // 종전 규칙(1..N)에서는 PDF·엑셀이 완전히 일치해도 포기했다
+    expect(checkSplitGuards(cert, ['해시 함수', '쿠키 보안', '캐시 전략'], titles)).toMatchObject({ ok: false, reason: 'sequence' });
+    expect(checkSplitGuards(cert, ['해시 함수', '쿠키 보안', '캐시 전략'], titles, { expectedNumbers: [7, 8, 9] })).toEqual({ ok: true });
+  });
+
+  it('V20: expectedNumbers와 다르면 여전히 sequence — 쪽번호를 읽은 경우는 계속 막는다', () => {
+    expect(checkSplitGuards(ranges(1, 5, 9), ['', '', ''], titles, { expectedNumbers: [1, 2, 3] }))
+      .toMatchObject({ ok: false, reason: 'sequence', message: expect.stringContaining('≠ 엑셀 번호 [1,2,3]') });
+    // 같은 번호가 2개인 옛 모의(종목 선택 문항)도 집합이 같아야 통과
+    expect(checkSplitGuards(ranges(12, 13, 13), ['', '', ''], titles, { expectedNumbers: [12, 13, 13] })).toEqual({ ok: true });
+    expect(checkSplitGuards(ranges(12, 13, 14), ['', '', ''], titles, { expectedNumbers: [12, 13, 13] }))
+      .toMatchObject({ ok: false, reason: 'sequence' });
+  });
+
   it('V11: 구간 첫 페이지가 한 칸씩 앞 문항이면 alignment, alignment:false면 통과, 맞으면 ok', () => {
     const shifted = ['표지 해시 함수', '해시 함수 설명', '쿠키 보안 설명'];
     expect(checkSplitGuards(ranges(1, 2, 3), shifted, titles)).toMatchObject({ ok: false, reason: 'alignment' });
