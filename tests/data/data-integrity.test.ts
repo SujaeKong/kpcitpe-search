@@ -151,7 +151,7 @@ describe('해설지 매핑 무결성', () => {
     expect(violations((p) => !!p.explanationFileId && !ids.has(p.explanationFileId) && `없는 id ${p.explanationFileId}`)).toEqual(NONE);
   });
 
-  it('D9: [재분할 금지] 옛 형식 12개 항목은 매핑에 존재하고 분할(questions)이 없다', () => {
+  it('D9: [재분할 금지] NO_RESPLIT_KEYS 항목은 매핑에 존재하고 분할(questions)이 없다', () => {
     const problemsFound = NO_RESPLIT_KEYS.flatMap((keyPath) => {
       const entry = keyPath.split('/').reduce((node: any, key) => node?.[key], mapping);
       if (!entry) return [`${keyPath}: 항목 없음 (키 규칙이 바뀌었으면 NO_RESPLIT_KEYS 갱신)`];
