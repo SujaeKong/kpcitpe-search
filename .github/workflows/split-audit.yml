@@ -29,7 +29,7 @@ on:
       check:
         description: "검사 종류 — alignment(통합본 재검출) / content(분할본 내용 대조) / both / text-layer / renumber(번호 재배정 실험)"
         type: choice
-        options: ['both', 'alignment', 'content', 'text-layer', 'renumber']
+        options: ['both', 'alignment', 'content', 'text-layer', 'renumber', 'title-anchor']
         default: 'both'
 
 permissions:
@@ -91,6 +91,16 @@ jobs:
           SAMPLE: ${{ inputs.sample }}
         run: npm run split:experiment:renumber
 
+      # 실험: 숫자 마커 없이 제목만으로 문항 시작 페이지를 특정할 수 있는지 (detect-gap 대책)
+      - name: Title anchor experiment
+        if: github.event_name == 'workflow_dispatch' && inputs.check == 'title-anchor'
+        env:
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          AUDIT_ONLY: ${{ inputs.only }}
+          CONCURRENCY: ${{ inputs.concurrency }}
+          SAMPLE: ${{ inputs.sample }}
+        run: npm run split:experiment:title
+
       - name: Upload audit result
         if: always()
         uses: actions/upload-artifact@v4
@@ -101,4 +111,5 @@ jobs:
             tmp-split/split-content-audit.json
             tmp-split/text-layer-audit.json
             tmp-split/renumber-experiment.json
+            tmp-split/title-anchor-experiment.json
           if-no-files-found: warn

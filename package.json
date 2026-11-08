@@ -24,7 +24,8 @@
     "astro": "astro",
     "split:audit:content": "tsx scripts/audit-split-content.ts",
     "split:audit:text": "tsx scripts/audit-text-layer.ts",
-    "split:experiment:renumber": "tsx scripts/experiment-renumber.ts"
+    "split:experiment:renumber": "tsx scripts/experiment-renumber.ts",
+    "split:experiment:title": "tsx scripts/experiment-title-anchor.ts"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^11.2.0",
