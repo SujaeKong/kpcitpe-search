@@ -26,6 +26,8 @@ import { PDFDocument } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import { NO_RESPLIT_KEYS, sameMappingContent } from './lib/explanation-keys';
 import { matchSplitContent, titleTokens } from './lib/split-content';
+import { checkTitleAlignment as checkTitleAlignmentFn } from './lib/split-alignment';
+import { renumberRangesByPosition } from './lib/split-renumber';
 
 const __filename = url.fileURLToPath(import.meta.url);
 const ROOT = path.resolve(path.dirname(__filename), '..');
@@ -388,27 +390,8 @@ export function detectQuestionRangesWithSignal(pageTexts: string[]): {
 // 거치지 않고 쓰도록 — 순환 참조 방지). 기존 import 경로 유지를 위해 여기서 재수출한다.
 export { titleTokens };
 
-/**
- * 분할 구간 첫 페이지 텍스트(rangeTexts[i])가 짝지은 문항 제목(titles[i])과 맞는지 검사.
- * titles[i + offset]과 가장 잘 맞는 offset(-2..2)을 돌려준다 — 0이 아니면 한 칸씩 어긋난 분할
- * (옛 형식 off-by-one, PROJECT.md §10). 텍스트가 없거나 근거가 없으면 동점 → 0.
- */
-export function checkTitleAlignment(rangeTexts: string[], titles: string[]): { bestOffset: number; scores: Record<number, number> } {
-  const texts = rangeTexts.map((t) => t.replace(/\s+/g, '').toLowerCase());
-  const tokenSets = titles.map(titleTokens);
-  const scores: Record<number, number> = {};
-  for (const offset of [0, -1, 1, -2, 2]) {
-    let score = 0;
-    texts.forEach((text, i) => {
-      const tokens = tokenSets[i + offset];
-      if (!tokens?.length) return;
-      if (tokens.filter((t) => text.includes(t)).length / tokens.length >= 0.5) score++;
-    });
-    scores[offset] = score;
-  }
-  const bestOffset = [0, -1, 1, -2, 2].reduce((best, o) => (scores[o] > scores[best] ? o : best), 0);
-  return { bestOffset, scores };
-}
+// 제목 정렬 검사는 lib/split-alignment.ts — 재배정·감사에서 공유 (재export로 기존 import 경로 유지)
+export { checkTitleAlignment } from './lib/split-alignment';
 
 /**
  * 시그널이 놓친 문항의 시작 페이지를 문항 제목으로 보강한다.
@@ -539,7 +522,7 @@ export function checkSplitGuards(
   // 번호가 정상이어도 문항↔내용이 한 칸씩 어긋날 수 있음(옛 형식) — 구간 첫 페이지에 짝지은 문항 제목이 있는지
   if (alignment) {
     const byPage = [...ranges].sort((a, b) => a.startPage - b.startPage);
-    const result = checkTitleAlignment(byPage.map((r) => pageTexts[r.startPage - 1] ?? ''), titles);
+    const result = checkTitleAlignmentFn(byPage.map((r) => pageTexts[r.startPage - 1] ?? ''), titles);
     if (result.bestOffset !== 0) {
       return {
         ok: false,
@@ -653,9 +636,15 @@ async function processSplitTask(
       console.log(`   제목으로 보강: ${added.map((r) => `${r.questionNumber}번:p${r.startPage}`).join(', ')}`);
     }
 
-    const guard = checkSplitGuards(detectedRanges, pageTexts, titles, {
-      expectedNumbers: sortedProblems.map((p) => p.questionNumber as number),
-    });
+    const expectedNumbers = sortedProblems.map((p) => p.questionNumber as number);
+
+    // 검출 번호가 쪽번호인 해설집 구제 — 구간 수가 맞고 제목 정렬이 짝짓기를 증명할 때만
+    // 번호를 위치순으로 다시 매긴다 (lib/split-renumber.ts의 근거 조건 참고).
+    const renum = renumberRangesByPosition(detectedRanges, pageTexts, titles, expectedNumbers);
+    if (renum.note) console.log(`   ${renum.note}`);
+    if (renum.renumbered) detectedRanges = renum.ranges;
+
+    const guard = checkSplitGuards(detectedRanges, pageTexts, titles, { expectedNumbers });
     if (!guard.ok) {
       errors.push(guard.message);
       return { task, ok: false, uploaded, errors, detectedRanges, detectionSignal, pageCount };
