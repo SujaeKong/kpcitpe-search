@@ -28,6 +28,7 @@ import { NO_RESPLIT_KEYS, sameMappingContent } from './lib/explanation-keys';
 import { matchSplitContent, titleTokens } from './lib/split-content';
 import { checkTitleAlignment as checkTitleAlignmentFn } from './lib/split-alignment';
 import { renumberRangesByPosition } from './lib/split-renumber';
+import { titleAnchorRanges } from './lib/split-title-anchor';
 
 const __filename = url.fileURLToPath(import.meta.url);
 const ROOT = path.resolve(path.dirname(__filename), '..');
@@ -470,13 +471,31 @@ export function fillMissingRangesByTitle(
 export function detectRanges(
   pageTexts: string[],
   titles: string[],
-): { ranges: QuestionRange[]; signal: string; filledNums: Set<number> } {
+  expectedNumbers?: number[],
+): { ranges: QuestionRange[]; signal: string; filledNums: Set<number>; anchorNote?: string } {
   const { ranges, signal } = detectQuestionRangesWithSignal(pageTexts);
   const filledNums = new Set<number>();
-  if (ranges.length === 0 || ranges.length >= titles.length) return { ranges, signal, filledNums };
+  const expected = expectedNumbers ?? titles.map((_, i) => i + 1);
+
+  /** 시그널·보강으로도 수가 안 맞을 때만 쓰는 마지막 수단 (lib/split-title-anchor.ts의 네 조건) */
+  const tryAnchor = (signalCount: number) => {
+    const a = titleAnchorRanges(pageTexts, titles, expected, { signalCount });
+    if (!a.ok) return { ranges, signal, filledNums, anchorNote: a.reason };
+    return {
+      ranges: a.ranges as QuestionRange[],
+      signal: 'title-anchor',
+      // 제목으로 만든 구간이므로 업로드 검증도 제목 근거를 요구하게 한다
+      filledNums: new Set(a.ranges.map((r) => r.questionNumber)),
+      anchorNote: a.reason,
+    };
+  };
+
+  // 시그널이 이미 문항 수를 맞췄으면 그대로 — 제목 앵커로 덮어쓰지 않는다
+  if (ranges.length === titles.length) return { ranges, signal, filledNums };
+  if (ranges.length === 0 || ranges.length > titles.length) return tryAnchor(ranges.length);
 
   const filled = fillMissingRangesByTitle(ranges, pageTexts, titles);
-  if (filled.length === ranges.length) return { ranges, signal, filledNums };
+  if (filled.length !== titles.length) return tryAnchor(ranges.length);
   for (const r of filled) {
     if (!ranges.some((d) => d.questionNumber === r.questionNumber)) filledNums.add(r.questionNumber);
   }
@@ -625,11 +644,12 @@ async function processSplitTask(
       .sort((a, b) => (a.questionNumber as number) - (b.questionNumber as number));
     const titles = sortedProblems.map((p) => p.title);
 
-    const detection = detectRanges(pageTexts, titles);
+    const detection = detectRanges(pageTexts, titles, sortedProblems.map((p) => p.questionNumber as number));
     detectedRanges = detection.ranges;
     detectionSignal = detection.signal;
     const filledNums = detection.filledNums;
     console.log(`   시그널: ${detectionSignal}`);
+    if (detection.anchorNote) console.log(`   ${detection.anchorNote}`);
     console.log(`   감지된 문항: ${detectedRanges.length}개 — ${detectedRanges.map((r) => `${r.questionNumber}번:p${r.startPage}-${r.endPage}`).join(', ')}`);
     if (filledNums.size > 0) {
       const added = detectedRanges.filter((r) => filledNums.has(r.questionNumber));

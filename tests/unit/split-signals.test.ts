@@ -183,12 +183,15 @@ describe('놓친 문항 제목 보강 (fillMissingRangesByTitle)', () => {
     expect(plain.filledNums.size).toBe(0);
   });
 
-  it('V18: 시그널이 3건 미만이면 검출 자체가 성립하지 않아 보강도 하지 않는다 (오검출 방지 하한)', () => {
-    // 6문항 중 "문 제 N." 서식이 2개뿐이면 signal=none·ranges=[] → 제목만으로 채우지 않고 통합본 폴백
+  it('V18: 시그널 하한(3건) 미만이면 보강은 하지 않지만, 제목 앵커가 마지막 수단으로 받는다', () => {
+    // "문 제 N." 서식이 2개뿐이면 시그널 검출은 성립하지 않는다(ranges=[]).
+    // 2026-11-08 이전에는 여기서 통합본 폴백이었다. 지금은 제목 앵커(네 조건)가 받는다 —
+    // 전수 조사에서 시그널 0인 42개 해설집 337문항이 이 경로로만 풀렸다.
     const twoMarkers = ['표지', '문 제 1. 해시 함수의 충돌 저항성', '2. 쿠키 보안 속성 설정', '문 제 3. 캐시 무효화 전략'];
     const res = detectRanges(twoMarkers, titles);
-    expect({ signal: res.signal, ranges: res.ranges.length, filled: res.filledNums.size }).toEqual({ signal: 'none', ranges: 0, filled: 0 });
-    // 앵커가 없으면 제목만 믿고 구간을 만들지 않는다 — fill 함수를 직접 부를 때와의 차이
+    expect(res.signal).toBe('title-anchor');
+    expect(res.ranges.map((r) => r.startPage)).toEqual([2, 3, 4]);
+    // 보강 함수 자체는 여전히 앵커 없이는 아무것도 만들지 않는다 (제목 앵커와 별개 경로)
     expect(fillMissingRangesByTitle([], twoMarkers, titles)).toEqual([]);
   });
 
